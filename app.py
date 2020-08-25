@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_restful import Api, Resource, reqparse
 import json
+from graphs import Graph
 
 def create_app(app_name='GRAPH_API'):
    app = Flask(app_name)
@@ -23,7 +24,8 @@ class GraphAPI(Resource):
       graph_list = [json.loads(graph) for graph in args['graphs'].split("\n")]
       
       for graph in graph_list:
-         graphs[graph['id']] = graph
+         graphs[graph['id']] = Graph(graph)
+         graphs[graph['id']].display()
 
       return {"graphs":len(graph_list)}
       
