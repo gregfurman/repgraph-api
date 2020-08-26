@@ -17,6 +17,9 @@ class Node:
    def __str__(self):
       return f"ID: {self.id}\nLabel: {self.label}\nIncoming edges: {self.incomingEdges}\nOutgoing Edges: {self.outgoingEdges}\nAnchored: {list(self.anchors.values())}"
 
+   def __repr__(self):
+      return str(self.id)
+
    def __cmp__(self,other):
       if self.id > other.id:
          return 1
@@ -24,6 +27,9 @@ class Node:
          return -1
       
       return 0
+
+   def compare_labels(self,other):
+      return other.label == self.label
 
    def add_edge(self,edge):
       if (self == edge.node_source):
@@ -51,8 +57,14 @@ class Edge:
    def get_src(self):
       return self.node_source
 
+   def get_nodes(self):
+      return {"src":self.get_src().id, "labels": f"{self.label}/{self.post_label}", "trg" : self.get_trg().id}
+
    def __repr__(self):
       return f"src: {self.node_source.id} -{self.label}/{self.post_label}-> trg: {self.node_target.id}"
+
+   def __eq__(self,other):
+      return self.node_target.compare_labels(other.node_target) and self.node_source.compare_labels(other.node_source) and (f"{self.label}/{self.post_label}"==f"{other.label}/{other.post_label}")
 
 
 class Token:
@@ -74,6 +86,8 @@ class Graph:
    def __init__(self,graph_input):
       self.sentence = graph_input['input']
 
+      self.id = graph_input['id']
+
       self.tokens = {token['index']: Token(token_input=token) for token in graph_input['tokens']}
       self.nodes = {node['id']: Node(node_input=node,tokens=self.tokens) for node in graph_input['nodes']}
       self.edges = [Edge(self.nodes[edge['source']],self.nodes[edge['target']],edge['label'],edge['post-label']) for edge in graph_input['edges']]
@@ -83,14 +97,14 @@ class Graph:
    def display(self):
       [print(node) for node in self.nodes.values()]
 
-   def as_adjacency_list(self,transpose=False,directed=True):
+   def as_adjacency_list(self,directed=True,as_object=False):
       
       if directed:
+         if (as_object):
+            return {node.id: [edge.get_trg() for edge in node.outgoingEdges] for node in self.nodes.values()}
 
-         if transpose:      
-            adj_list = {node.id: [edge.get_trg().id for edge in node.outgoingEdges] for node in self.nodes.values()}
-         else:
-            adj_list = {node.id: [edge.get_src().id for edge in node.incomingEdges] for node in self.nodes.values()}
+         return {node.id: [edge.get_trg().id for edge in node.outgoingEdges] for node in self.nodes.values()}
+
       else:
          
          adj_list = {node.id: [edge.get_src().id for edge in node.incomingEdges] for node in self.nodes.values()}
@@ -122,7 +136,6 @@ class Graph:
 
    def is_connected(self):
 
-      # visited_list = self.BFS(self.top) == [not i for i in self.BFS(self.top,True)]
       adj_list = self.as_adjacency_list()
       adj_list_T = self.as_adjacency_list(transpose=True)
 
@@ -136,23 +149,79 @@ class Graph:
    def DFS(self,G,v,seen=None,path=None):
       if seen is None: seen = []
       if path is None: path = [v]
-
+      
       seen.append(v)
-
+   
       paths = []
       for t in G[v]:
          if t not in seen:
                t_path = path + [t]
                paths.append(tuple(t_path))
                paths.extend(self.DFS(G, t, seen[:], t_path))
+         
       return paths
 
    def findLongestPath(self,directed=True):
 
-      paths = self.DFS(self.as_adjacency_list(directed=directed),1)
-
+      paths = self.findAllPaths(directed=directed)
+      print(paths)
       max_len   = max(len(p) for p in paths)
-      max_paths = [list(p) for p in paths if len(p) == max_len]
+      max_paths = [p for p in paths if len(p) == max_len]
 
       return {"max_paths":max_paths,"length":max_len}
+
+   def findAllPaths(self,directed=True,as_object=False):
+
+      paths = []
+
+      if (directed):
+         for i in range(len(self.nodes)):
+            paths.extend(self.DFS(self.as_adjacency_list(directed=directed,as_object=as_object),i))
+      else:
+         paths= self.DFS(self.as_adjacency_list(directed=directed,as_object=as_object),0)
+      return paths
+
+
+
+
+   def subset(self):
+      pass
+
+   def subgraph_search(self,subgraph):
+
+      # subgraph_all_paths = set([tuple(range(0,len(path))) for path in graph.findAllPaths()][5:9])
+      # graph_all_paths = set([tuple(range(0,len(path))) for path in self.findAllPaths()])
+
+      edges = []
+      for edge in self.edges:
+         for subgraph_edge in subgraph.edges[3:5]:
+            if (subgraph_edge==edge):
+               edges.append(edge)
+
+
+   def adj_nodes(self,node_id):
+
+      node = self.nodes[node_id]
+      return [edges.get_nodes() for edges in node.incomingEdges + node.outgoingEdges]
+
+
+      
+
+      # subgraph_all_paths = ([tuple(graph.nodes[node] for node in path) for path in graph.findAllPaths()][5:9])
+      # graph_all_paths = ([ tuple(self.nodes[node] for node in path) for path in self.findAllPaths()])
+
+      # subgraph_paths_len = len(subgraph_all_paths)
+
+      # matching_paths = []
+
+      # for index in range(len(graph_all_paths)-subgraph_paths_len):
+
+      #    window = graph_all_paths[index:subgraph_paths_len]
+
+         # for path in window:
+            
+            # matching_paths.append(graph_all_paths[index:subgraph_paths_len])
+
+
+      
 

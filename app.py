@@ -3,11 +3,11 @@ from flask_restful import Api, Resource, reqparse
 import json
 from graphs import Graph
 
-def create_app(app_name='GRAPH_API'):
-   app = Flask(app_name)
-   return app
+# def create_app(app_name='GRAPH_API'):
+#    app = Flask(app_name)
+#    return app
 
-app = create_app()
+app = Flask(__name__)
 api = Api(app)
 graphs = {}
 
@@ -25,7 +25,11 @@ class GraphAPI(Resource):
       
       for graph in graph_list:
          graphs[graph['id']] = Graph(graph)
-         graphs[graph['id']].display()
+
+         #########
+#        If you would like to test out graph methods you can do the following:
+#        graphs[graph['id']].function(parameters)
+         #########
 
       return {"graphs":len(graph_list)}
       
