@@ -3,13 +3,18 @@ class Node:
    """
    The Node class holds a node's id, label, a list of incoming and outgoing Edge objects and a list of Token objects with which it is anchored to. 
    """
-
-   def __init__(self,node_input,tokens):
+   def __init__(self,node_input,tokens=None):
       self.id = node_input['id']
       self.label = node_input['label']
       self.incomingEdges = []
       self.outgoingEdges = []
-      self.anchors = {token_id: tokens[token_id] for token_id in range(node_input['anchors'][0]["from"],node_input['anchors'][0]["end"]+1)}
+
+      
+      if tokens is not None:
+         self.anchors = {token_id: tokens[token_id] for token_id in range(node_input['anchors'][0]["from"],node_input['anchors'][0]["end"]+1)}
+      else:
+         self.anchors = {}
+
 
    def __eq__(self, other):
       return other.label == self.label
@@ -58,14 +63,15 @@ class Edge:
    The Edge class is a directional connection between 2 nodes, having a node source (node_src) and node target (node target). 
    Each Edge also has a label and post-label.
    """
-   def __init__(self,node_src,node_trg,label,post_label):
+   def __init__(self,node_src,node_trg,label,post_label,add_edge=True):
       self.node_source = node_src
       self.node_target = node_trg
       self.label = label
       self.post_label = post_label
 
-      node_src.add_edge(self)
-      node_trg.add_edge(self)
+      if add_edge:
+         node_src.add_edge(self)
+         node_trg.add_edge(self)
 
 
    def get_trg(self):
@@ -75,13 +81,19 @@ class Edge:
       return self.node_source
 
    def get_nodes(self):
-      return {"src":self.get_src().id, "labels": f"{self.label}/{self.post_label}", "trg" : self.get_trg().id}
+      return {"src":self.get_src().label, "labels": f"{self.label}/{self.post_label}", "trg" : self.get_trg().label}
 
    def __repr__(self):
-      return f"src: {self.node_source.id} -{self.label}/{self.post_label}-> trg: {self.node_target.id}"
+      return f"src: {self.node_source.label} -{self.label}/{self.post_label}-> trg: {self.node_target.label}"
+
+   def __str__(self):
+      return f"src: {self.node_source.label} -{self.label}/{self.post_label}-> trg: {self.node_target.label}"
+
+   def __hash__(self):
+      return hash(f"{self.node_source.label}-{self.label}/{self.post_label}-{self.node_target.label}")
 
    def __eq__(self,other):
-      return self.node_target.compare_labels(other.node_target) and self.node_source.compare_labels(other.node_source) and (f"{self.label}/{self.post_label}"==f"{other.label}/{other.post_label}")
+      return self.node_target == other.node_target and self.node_source == other.node_source and (f"{self.label}/{self.post_label}"==f"{other.label}/{other.post_label}")
 
 
 class Token:
@@ -114,7 +126,7 @@ class Graph:
 
       self.tokens = {token['index']: Token(token_input=token) for token in graph_input['tokens']}
       self.nodes = {node['id']: Node(node_input=node,tokens=self.tokens) for node in graph_input['nodes']}
-      self.edges = [Edge(self.nodes[edge['source']],self.nodes[edge['target']],edge['label'],edge['post-label']) for edge in graph_input['edges']]
+      self.edges = {f"{self.nodes[edge['source']].label}-{edge['label'],edge['post-label']}-{self.nodes[edge['target']].label}":   Edge(self.nodes[edge['source']],self.nodes[edge['target']],edge['label'],edge['post-label']) for edge in graph_input['edges']}
       self.json_input = graph_input
       self.top = self.nodes[graph_input['tops'][0]]
 
@@ -252,11 +264,21 @@ class Graph:
    def subgraph_search(self,subgraph):
 
       edges = []
-      for edge in self.edges:
-         for subgraph_edge in subgraph.edges[3:5]:
-            if (subgraph_edge==edge):
-               edges.append(edge)
+      for node_src in subgraph.keys():
+         for args in subgraph[node_src]:
+            key = f"{node_src}-{args[1].upper()}/{args[2].upper()}-{args[0]}"
+            edges.append(self.edges.get(key,None))
+            # subgraph_edges += Edge(Node({"id": 0,"label" : node_src}),Node({"id": 0,"label" : args[0]}),args[1].upper(),args[2].upper(),add_edge=False)
+            
 
+
+      # edges = []
+      # for edge in self.edges:
+      #    for subgraph_edge in subgraph_edges:
+      #       if (subgraph_edge==edge):
+      #          edges.append(edge)
+               
+ 
 
       if len(edges) > 1:
          return True, edges
@@ -267,6 +289,7 @@ class Graph:
 
       node = self.nodes[node_id]
       return node.get_neighbours(True) + node.get_neighbours(False) #remove node_id from get_nodes
+
 
 class GraphManipulator:
    """

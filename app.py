@@ -37,12 +37,12 @@ class LoadGraphs(Resource):
       for graph in graph_list:
          graphs.addGraph(graph)
          
-         # graphs[graph['id']].display()
-         print(graph['source'])
-         print("Connected:",graphs.is_connected(graph['id']))
-         print("Acyclic:",graphs.is_cyclic(graph['id']))
-         print(graphs.longest_path(graph['id']))
-         print("************************")
+         # graphs.getGraph(graph['id']).display()
+         # print(graph['source'])
+         # print("Connected:",graphs.is_connected(graph['id']))
+         # print("Acyclic:",graphs.is_cyclic(graph['id']))
+         # print(graphs.longest_path(graph['id']))
+         # print("************************")
 
 
 
@@ -52,15 +52,6 @@ class LoadGraphs(Resource):
          #########
       return {"graphs":len(graph_list)}
       
-# class GetGraph(Resource):
-#    def __init__(self):
-#       self.reqparse = reqparse.RequestParser()
-#       self.reqparse.add_argument('check_graphs')
-#       super(CheckGraphsAPI,self).__init__()
-
-#    def get(self,graph_id):
-#        return str(graphs.getGraph(graph_id))
-
 
 class checkGraphs(Resource):
    def __init__(self):
