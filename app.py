@@ -72,14 +72,30 @@ class checkGraphs(Resource):
       args = self.reqparse.parse_args()
       json_args = json.loads(args['args'])
 
-      if set(["graph_id","node_id"]) == json_args.keys():
+      keys = json_args.keys()
+
+      if set(["graph_id","node_id"]) == keys:
          return graphs.getNodeNeighbours(json_args["graph_id"],json_args["node_id"])
-      elif set(["node_labels"]) == json_args.keys():
+      elif set(["node_labels"]) == keys:
          return graphs.getGraphs(json_args["node_labels"])
+      elif set(["graph_id_list"]) == keys:
+         return graphs.checkProperties(json_args["graph_id_list"])
+      elif set(["subgraph"]) == keys:
+         return graphs.checkSubgraph(json_args['subgraph'])
+      
+
+# class graphProperties(Resource):
+
+#    def __init__(self):
+#       self.reqparse = reqparse.RequestParser()
+#       self.reqparse.add_argument('args')
+#       super(graphProperties,self).__init__()
+
+#    def get(self)
 
 
 api.add_resource(LoadGraphs, '/',endpoint="load")
-api.add_resource(checkGraphs, '/nodes',endpoint="nodes")
+api.add_resource(checkGraphs, '/graphs',endpoint="graphs")
 
 
 

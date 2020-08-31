@@ -118,6 +118,8 @@ class Graph:
       self.json_input = graph_input
       self.top = self.nodes[graph_input['tops'][0]]
 
+      self.connected=None
+
    def display(self):
       [print(node) for node in self.nodes.values()]
 
@@ -181,8 +183,10 @@ class Graph:
 
       for key in self.nodes.keys():
          if not(self.BFS_connected(s_node=key)):
+            self.connected=False
             return False
-            
+
+      self.connected=True
       return True
 
    def is_cyclic(self):
@@ -215,22 +219,30 @@ class Graph:
       return paths
 
 
-   def findLongestPath(self,directed=True):
+   def findLongestPath(self,directed=True,connected=True):
 
-      paths = self.findAllPaths(directed=directed)
+      paths = self.findAllPaths(directed=directed,connected=connected)
       max_len   = max(len(p) for p in paths)
       max_paths = [p for p in paths if len(p) == max_len]
 
       return {"max_paths":max_paths,"length":max_len}
 
-   def findAllPaths(self,directed=True):
+   def findAllPaths(self,directed=True,connected=True):
 
       paths = []
 
       if (directed):
          for i in range(len(self.nodes)):
             paths.extend(self.DFS(i,directed=True))
-
+      elif not(connected):
+         unseen = set(range(len(self.nodes)))
+         
+         while unseen:
+            node = unseen.pop()
+            paths_temp = self.DFS(node)
+            paths.extend(paths_temp)
+            for path in paths:
+               unseen -= set(path)
       else:
          paths= self.DFS(0)
 
@@ -280,11 +292,21 @@ class GraphManipulator:
    def getGraphs(self,node_labels):
          return [graph for graph in self.Graphs.keys() if self.Graphs[graph].has_labels(node_labels)]
 
+   def checkProperties(self, graph_id_list):
+      return {graph_id: {
+         "connected" : str(self.is_connected(graph_id)), 
+         "acylic" : str(self.is_cyclic(graph_id)), 
+         "longest_directed_path" : str(self.longest_path(graph_id)),
+          "longest_undirected_path" : str(self.longest_path(graph_id,directed=False))} for graph_id in graph_id_list}
+      
+   def checkSubgraph(self,json_subgraph):
+      return [graph_id for graph_id in self.Graphs.keys() if self.Graphs[graph_id].subgraph_search(json_subgraph)]
+
    def is_cyclic(self, graph_id):
       return self.Graphs[graph_id].is_cyclic()
 
-   def longest_path(self, graph_id, directed=False):
-      return self.Graphs[graph_id].findLongestPath()
+   def longest_path(self, graph_id, directed=True):
+      return self.Graphs[graph_id].findLongestPath(directed=directed,connected=self.Graphs[graph_id].connected)
 
    def is_connected(self,graph_id):
       return self.Graphs[graph_id].is_connected()
