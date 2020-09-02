@@ -81,7 +81,7 @@ class Edge:
       return self.node_source
 
    def get_nodes(self):
-      return {"src":self.get_src().label, "labels": f"{self.label}/{self.post_label}", "trg" : self.get_trg().label}
+      return {"src_node": {"label" : self.get_src().label, "id" : self.get_src().id}, "edge_labels": f"{self.label}/{self.post_label}", "trg_node" : {"label":self.get_trg().label,"id":self.get_trg().id}}
 
    def __repr__(self):
       return f"src: {self.node_source.label} -{self.label}/{self.post_label}-> trg: {self.node_target.label}"
@@ -126,7 +126,7 @@ class Graph:
 
       self.tokens = {token['index']: Token(token_input=token) for token in graph_input['tokens']}
       self.nodes = {node['id']: Node(node_input=node,tokens=self.tokens) for node in graph_input['nodes']}
-      self.edges = {f"{self.nodes[edge['source']].label}-{edge['label'],edge['post-label']}-{self.nodes[edge['target']].label}":   Edge(self.nodes[edge['source']],self.nodes[edge['target']],edge['label'],edge['post-label']) for edge in graph_input['edges']}
+      self.edges = {f"{self.nodes[edge['source']].label}-{edge['label']}/{edge['post-label']}-{self.nodes[edge['target']].label}":   Edge(self.nodes[edge['source']],self.nodes[edge['target']],edge['label'],edge['post-label']) for edge in graph_input['edges']}
       self.json_input = graph_input
       self.top = self.nodes[graph_input['tops'][0]]
 
@@ -142,11 +142,18 @@ class Graph:
       return list(self.nodes.values)
 
    def has_labels(self,labels):
-      return set(labels).issubset(set([node.label for node in self.nodes.values()]))
+      
+      node_ids = [str(node.id) for node in self.nodes.values() if node.label in labels]
+      if len(node_ids) == len(labels):
+         return node_ids
+
+      return []
    
    def __str__(self):
        return " ".join([str(node) for node in self.nodes.values()])
 
+   def as_dict(self):
+      return {node.id: str(node) for node in self.nodes.values()}
 
    def BFS_cycle(self,transpose=False):
 
@@ -264,26 +271,19 @@ class Graph:
    def subgraph_search(self,subgraph):
 
       edges = []
+
       for node_src in subgraph.keys():
          for args in subgraph[node_src]:
             key = f"{node_src}-{args[1].upper()}/{args[2].upper()}-{args[0]}"
-            edges.append(self.edges.get(key,None))
-            # subgraph_edges += Edge(Node({"id": 0,"label" : node_src}),Node({"id": 0,"label" : args[0]}),args[1].upper(),args[2].upper(),add_edge=False)
+            if key in self.edges.keys():
+               print(key)
+               edges.append(self.edges[key].get_nodes())
+
             
+      if len(edges) > 0:
+         return {"links" :edges}
 
-
-      # edges = []
-      # for edge in self.edges:
-      #    for subgraph_edge in subgraph_edges:
-      #       if (subgraph_edge==edge):
-      #          edges.append(edge)
-               
- 
-
-      if len(edges) > 1:
-         return True, edges
-
-      return False
+      return []
 
    def adj_nodes(self,node_id):
 
@@ -304,26 +304,46 @@ class GraphManipulator:
    def getGraph(self,graph_id):
       return self.Graphs.get(graph_id,None)
 
+   def delGraph(self,graph_id:int) -> bool:
+      if graph_id in self.Graphs:
+         del self.Graphs[graph_id]
+         return True
+
+      return False
+
+   def getGraphs(self,graph_id_list):
+      return {graph_id: self.Graphs[graph_id] for graph_id in graph_id_list}
+
+
    def getNodeNeighbours(self,graph_id,node_id):
       graph = self.getGraph(graph_id)
 
       if graph is not None:
          return graph.getNode(int(node_id)).get_neighbours(as_json=True)
       
-      return '{"error":"graph id does not exist"}'
+      return {"error":"graph id does not exist"}
 
-   def getGraphs(self,node_labels):
-         return [graph for graph in self.Graphs.keys() if self.Graphs[graph].has_labels(node_labels)]
+   def getGraphsByNode(self,node_labels):
+      
+      graphs = {}
+      for key in self.Graphs.keys():
+         node_ids = self.Graphs[key].has_labels(node_labels)
+         if node_ids:
+            graphs[key]=node_ids
+
+      return graphs
+      # return [graph for graph in self.Graphs.keys() if self.Graphs[graph].has_labels(node_labels)]
+
 
    def checkProperties(self, graph_id_list):
       return {graph_id: {
          "connected" : str(self.is_connected(graph_id)), 
          "acylic" : str(self.is_cyclic(graph_id)), 
          "longest_directed_path" : str(self.longest_path(graph_id)),
-          "longest_undirected_path" : str(self.longest_path(graph_id,directed=False))} for graph_id in graph_id_list}
+          "longest_undirected_path" : str(self.longest_path((graph_id),directed=False))} for graph_id in graph_id_list if graph_id in self.Graphs}
       
    def checkSubgraph(self,json_subgraph):
-      return [graph_id for graph_id in self.Graphs.keys() if self.Graphs[graph_id].subgraph_search(json_subgraph)]
+      return {graph_id: self.Graphs[graph_id].subgraph_search(json_subgraph) for graph_id in self.Graphs.keys()}
 
    def is_cyclic(self, graph_id):
       return self.Graphs[graph_id].is_cyclic()
@@ -333,3 +353,6 @@ class GraphManipulator:
 
    def is_connected(self,graph_id):
       return self.Graphs[graph_id].is_connected()
+
+   def __len__(self):
+      return len(self.Graphs.keys())
