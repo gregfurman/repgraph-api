@@ -1,5 +1,4 @@
 class Node:
-
    """
    The Node class holds a node's id, label, a list of incoming and outgoing Edge objects and a list of Token objects with which it is anchored to. 
    """
@@ -40,13 +39,14 @@ class Node:
       return other.label == self.label
 
    def get_neighbours(self,incoming=True,as_json=False):
+      """Returns a dictionary containing a list of incoming and/or outgoing nodes from a specific node id."""
       if as_json:
          return {"incoming":[edge.get_src().id for edge in self.incomingEdges], "outgoing" :[edge.get_trg().id for edge in self.outgoingEdges]}
 
       if incoming:
-         return [edge.get_src().id for edge in self.incomingEdges]
+         return {"incoming":[edge.get_src().id for edge in self.incomingEdges]}
 
-      return [edge.get_trg().id for edge in self.outgoingEdges]      
+      return {"outgoing":[edge.get_trg().id for edge in self.outgoingEdges]}
 
    def add_edge(self,edge):
       if (self.id == edge.node_source.id):
@@ -73,14 +73,17 @@ class Edge:
          node_src.add_edge(self)
          node_trg.add_edge(self)
 
-
-   def get_trg(self):
+   
+   def get_trg(self) -> Node:
+      """Returns an edge's target node."""
       return self.node_target
 
-   def get_src(self):
+   def get_src(self) -> Node:
+      """Returns an edge's source node."""
       return self.node_source
 
-   def get_nodes(self):
+   def get_nodes(self) -> dict:
+      """Function that returns an edge's labels and target & source nodes in a dictionary string format."""
       return {"src_node": {"label" : self.get_src().label, "id" : self.get_src().id}, "edge_labels": f"{self.label}/{self.post_label}", "trg_node" : {"label":self.get_trg().label,"id":self.get_trg().id}}
 
    def __repr__(self):
@@ -118,31 +121,57 @@ class Graph:
    """
    A Graph object keeps a list of all the Nodes, Edges, Tokens, the original sentence being parsed and a single variable for a top node.
    There are multiple functions within the Graph class that allow for checking formal graph properties and longest directional & non-directional paths. 
+   
+   Attributes
+   ----------
+   sentence : str
+      The original sentence being represented in DMRS format.
+   id : str
+      ID of a graph.
+   nodes : dict
+      Dictionary of all node objects in a graph.
+   edges : dict
+      Dictionary of all edge objects in a graph.
+   top : Node
+      The top node in a graph.
+   
+   Methods
+   ---------
+
+
+
    """
    def __init__(self,graph_input):
+      """ 
+      Parameters
+      ----------
+      graph_input : dict
+         The graph represented by DMRS in json format. 
+      """
+
       self.sentence = graph_input['input']
-
       self.id = graph_input['id']
-
       self.tokens = {token['index']: Token(token_input=token) for token in graph_input['tokens']}
       self.nodes = {node['id']: Node(node_input=node,tokens=self.tokens) for node in graph_input['nodes']}
       self.edges = {f"{self.nodes[edge['source']].label}-{edge['label']}/{edge['post-label']}-{self.nodes[edge['target']].label}":   Edge(self.nodes[edge['source']],self.nodes[edge['target']],edge['label'],edge['post-label']) for edge in graph_input['edges']}
-      self.json_input = graph_input
       self.top = self.nodes[graph_input['tops'][0]]
 
-      self.connected=None
+      self.connected = None
 
    def display(self):
+      """Displays all nodes and edges in a graph in string format."""
       [print(node) for node in self.nodes.values()]
 
-   def getNode(self,node_id):
+   def getNode(self,node_id:int) -> Node:
+      """Returns a node from the 'nodes' dictionary that correspond to graph_id."""
       return self.nodes[node_id]
 
-   def getNodes(self):
+   def getNodes(self) -> list:
+      """Returns all nodes in a graph in a list."""
       return list(self.nodes.values)
 
-   def has_labels(self,labels):
-      
+   def has_labels(self,labels:list) -> list:
+      """Returns the ID of all nodes that have their labels within the input 'labels' list."""
       node_ids = [str(node.id) for node in self.nodes.values() if node.label in labels]
       if len(node_ids) == len(labels):
          return node_ids
@@ -152,12 +181,14 @@ class Graph:
    def __str__(self):
        return " ".join([str(node) for node in self.nodes.values()])
 
-   def as_dict(self):
+   def as_dict(self) -> dict:
+      """Returns the graph in a dictionary format. 
+      
+      Created with the intention of sending modified graph objects to the front-end that are easier to present using the javascript D3 library"""
       return {node.id: str(node) for node in self.nodes.values()}
 
-   def BFS_cycle(self,transpose=False):
-
-     
+   def BFS_cycle(self,transpose=False) -> bool:
+      """Does a Breadth First Search in order to ascertain whether a graph is cyclic."""
       if transpose:
          nodes = {node.id: len(node.outgoingEdges) for node in self.nodes.values()}
       else:
@@ -181,7 +212,8 @@ class Graph:
       
       return len(nodes.keys()) == visited
 
-   def BFS_connected(self,s_node):
+   def BFS_connected(self,s_node:int) -> bool:
+      """Does a Breadth First Search in order to determine whether a graph is connected."""
       visited = [False]*len(self.nodes)
       queue = [s_node]
 
@@ -197,26 +229,29 @@ class Graph:
       return visited.count(visited[0]) == len(visited)
 
 
-
-   def is_connected(self):
-
+   def is_connected(self) -> bool:
+      """Returns if a graph is connected."""
       for key in self.nodes.keys():
          if not(self.BFS_connected(s_node=key)):
-            self.connected=False
+            self.connected = False
             return False
 
-      self.connected=True
+      self.connected = True
       return True
 
-   def is_cyclic(self):
-
+   def is_cyclic(self) -> bool:
+      """Returns if a graph is cyclic."""
       if not(self.BFS_cycle()):
          return False
 
       return True
 
 
-   def DFS(self,v,directed=False,visited=None,path=None):
+   def DFS(self,v,directed=False,visited=None,path=None) -> list:
+      """Does a Depth First Search to find the longest directed or undirected path in a graph.
+      
+      Each search begins at the specified node id 'v'.
+      """
       if visited is None: visited = []
       if path is None: path = [v]
       
@@ -238,16 +273,16 @@ class Graph:
       return paths
 
 
-   def findLongestPath(self,directed=True,connected=True):
-
+   def findLongestPath(self,directed=True,connected=True) -> dict:
+      """Returns the longest directed or undirected path in connected or non-connected graph."""
       paths = self.findAllPaths(directed=directed,connected=connected)
       max_len   = max(len(p) for p in paths)
       max_paths = [p for p in paths if len(p) == max_len]
 
       return {"max_paths":max_paths,"length":max_len}
 
-   def findAllPaths(self,directed=True,connected=True):
-
+   def findAllPaths(self,directed=True,connected=True) -> list:
+      """Returns the longest connected or undirected paths in a connected or non-connected graph."""
       paths = []
 
       if (directed):
@@ -268,25 +303,24 @@ class Graph:
       return paths
 
 
-   def subgraph_search(self,subgraph):
-
+   def subgraph_search(self,subgraph:dict) -> dict:
+      """Returns all edges that a subgraph shares with a graph."""
       edges = []
 
       for node_src in subgraph.keys():
          for args in subgraph[node_src]:
             key = f"{node_src}-{args[1].upper()}/{args[2].upper()}-{args[0]}"
             if key in self.edges.keys():
-               print(key)
                edges.append(self.edges[key].get_nodes())
 
             
       if len(edges) > 0:
          return {"links" :edges}
 
-      return []
+      return {}
 
-   def adj_nodes(self,node_id):
-
+   def adj_nodes(self,node_id:int) -> list:
+      """Returns a list of adjacent nodes"""
       node = self.nodes[node_id]
       return node.get_neighbours(True) + node.get_neighbours(False) #remove node_id from get_nodes
 
@@ -301,7 +335,7 @@ class GraphManipulator:
    def addGraph(self,graph_input):
       self.Graphs[graph_input['id']] = Graph(graph_input)
 
-   def getGraph(self,graph_id):
+   def getGraph(self,graph_id:int) -> Graph:
       return self.Graphs.get(graph_id,None)
 
    def delGraph(self,graph_id:int) -> bool:
@@ -311,11 +345,11 @@ class GraphManipulator:
 
       return False
 
-   def getGraphs(self,graph_id_list):
+   def getGraphs(self,graph_id_list:list) -> dict:
       return {graph_id: self.Graphs[graph_id] for graph_id in graph_id_list}
 
 
-   def getNodeNeighbours(self,graph_id,node_id):
+   def getNodeNeighbours(self,graph_id:str,node_id:str) -> dict:
       graph = self.getGraph(graph_id)
 
       if graph is not None:
@@ -323,7 +357,7 @@ class GraphManipulator:
       
       return {"error":"graph id does not exist"}
 
-   def getGraphsByNode(self,node_labels):
+   def getGraphsByNode(self,node_labels:list) -> dict:
       
       graphs = {}
       for key in self.Graphs.keys():
@@ -332,26 +366,25 @@ class GraphManipulator:
             graphs[key]=node_ids
 
       return graphs
-      # return [graph for graph in self.Graphs.keys() if self.Graphs[graph].has_labels(node_labels)]
 
 
-   def checkProperties(self, graph_id_list):
+   def checkProperties(self, graph_id_list:list)-> dict:
       return {graph_id: {
          "connected" : str(self.is_connected(graph_id)), 
          "acylic" : str(self.is_cyclic(graph_id)), 
          "longest_directed_path" : str(self.longest_path(graph_id)),
           "longest_undirected_path" : str(self.longest_path((graph_id),directed=False))} for graph_id in graph_id_list if graph_id in self.Graphs}
       
-   def checkSubgraph(self,json_subgraph):
+   def checkSubgraph(self,json_subgraph:dict) -> dict:
       return {graph_id: self.Graphs[graph_id].subgraph_search(json_subgraph) for graph_id in self.Graphs.keys()}
 
-   def is_cyclic(self, graph_id):
+   def is_cyclic(self, graph_id:str) -> bool:
       return self.Graphs[graph_id].is_cyclic()
 
-   def longest_path(self, graph_id, directed=True):
+   def longest_path(self, graph_id:str, directed=True)->list:
       return self.Graphs[graph_id].findLongestPath(directed=directed,connected=self.Graphs[graph_id].connected)
 
-   def is_connected(self,graph_id):
+   def is_connected(self,graph_id:str) -> str:
       return self.Graphs[graph_id].is_connected()
 
    def __len__(self):
