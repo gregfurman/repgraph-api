@@ -2,20 +2,23 @@ import base64
 from flask_restful import Resource, reqparse
 from flask import request, jsonify, session
 from graphs import GraphManipulator
+from werkzeug import datastructures as ds
+import json
 
 graphs = GraphManipulator()
 
 class LoadGraphs(Resource):
    def __init__(self):
       self.reqparse = reqparse.RequestParser()
-      self.reqparse.add_argument('graphs')
+      self.reqparse.add_argument('graphs',type=ds.FileStorage,location="files")
       super(LoadGraphs, self).__init__()
 
    def post(self):
-      graph_list = request.get_json(force=True)
 
-      for graph in graph_list:
-         graphs.addGraph(graph)
+      args = self.reqparse.parse_args()
+
+      for graph in args['graphs']:
+         j_content = graphs.addGraph(json.loads(graph))
          
       return {"graphs":len(graphs)}
          
@@ -54,6 +57,11 @@ class GraphsById(Resource):
  def get(self):
       args = self.reqparse.parse_args()
       return graphs.getGraphs(args["graph_id_list"])
+
+class GraphsByPage(Resource):
+   def get(self,page_no):
+      return graphs.getGraphsByPage(page_no)
+
 
 class GraphCount(Resource):
    def get(self):

@@ -1,0 +1,7 @@
+{
+
+   "_account_v_for" : [["_fund_n_1","Arg1","NEQ"]],
+   "_now_a_1" : [["_account_v_for","Arg1","EQ"]],
+   "_these_q-dem" : [["_fund_n_1","RSTR","H"]]
+
+}

@@ -44,9 +44,9 @@ class Node:
          return {"incoming":[edge.get_src().id for edge in self.incomingEdges], "outgoing" :[edge.get_trg().id for edge in self.outgoingEdges]}
 
       if incoming:
-         return {"incoming":[edge.get_src().id for edge in self.incomingEdges]}
+         return [edge.get_src().id for edge in self.incomingEdges]
 
-      return {"outgoing":[edge.get_trg().id for edge in self.outgoingEdges]}
+      return [edge.get_trg().id for edge in self.outgoingEdges]
 
    def add_edge(self,edge):
       if (self.id == edge.node_source.id):
@@ -150,13 +150,19 @@ class Graph:
       """
 
       self.sentence = graph_input['input']
-      self.id = graph_input['id']
+      self.id = int(graph_input['id'])
       self.tokens = {token['index']: Token(token_input=token) for token in graph_input['tokens']}
       self.nodes = {node['id']: Node(node_input=node,tokens=self.tokens) for node in graph_input['nodes']}
       self.edges = {f"{self.nodes[edge['source']].label}-{edge['label']}/{edge['post-label']}-{self.nodes[edge['target']].label}":   Edge(self.nodes[edge['source']],self.nodes[edge['target']],edge['label'],edge['post-label']) for edge in graph_input['edges']}
       self.top = self.nodes[graph_input['tops'][0]]
 
       self.connected = None
+
+   def __iter__(self,other):
+      return self.id < other.id
+
+   def __eq__(self,other):
+      return self.id == other.id
 
    def display(self):
       """Displays all nodes and edges in a graph in string format."""
@@ -333,7 +339,7 @@ class GraphManipulator:
       self.Graphs = {}
 
    def addGraph(self,graph_input):
-      self.Graphs[graph_input['id']] = Graph(graph_input)
+      self.Graphs[int(graph_input['id'])] = Graph(graph_input)
 
    def getGraph(self,graph_id:int) -> Graph:
       return self.Graphs.get(graph_id,None)
@@ -348,12 +354,27 @@ class GraphManipulator:
    def getGraphs(self,graph_id_list:list) -> dict:
       return {graph_id: self.Graphs[graph_id] for graph_id in graph_id_list}
 
+   def getGraphsByPage(self, page_no,graphs_per_page=5):
 
-   def getNodeNeighbours(self,graph_id:str,node_id:str) -> dict:
+      sorted_keys = list(self.Graphs.keys())
+      sorted_keys.sort()
+      sorted_keys[graphs_per_page*(page_no-1):]
+
+      if len(sorted_keys) >= graphs_per_page:
+         sorted_keys = sorted_keys[:graphs_per_page]
+         
+      graph_list=[]
+
+      for key in sorted_keys:
+         graph_list.append(self.Graphs[key].as_dict())
+
+      return {"graphs" : graph_list, "remaining" : len(self.Graphs) - (len(graph_list)+ (page_no-1)*graphs_per_page ) }
+
+   def getNodeNeighbours(self,graph_id:int,node_id:int) -> dict:
       graph = self.getGraph(graph_id)
 
       if graph is not None:
-         return graph.getNode(int(node_id)).get_neighbours(as_json=True)
+         return graph.getNode(node_id).get_neighbours(as_json=True)
       
       return {"error":"graph id does not exist"}
 
@@ -369,6 +390,8 @@ class GraphManipulator:
 
 
    def checkProperties(self, graph_id_list:list)-> dict:
+      graph_id_list = [int(graph_id) for graph_id in graph_id_list]
+
       return {graph_id: {
          "connected" : str(self.is_connected(graph_id)), 
          "acylic" : str(self.is_cyclic(graph_id)), 
@@ -378,13 +401,13 @@ class GraphManipulator:
    def checkSubgraph(self,json_subgraph:dict) -> dict:
       return {graph_id: self.Graphs[graph_id].subgraph_search(json_subgraph) for graph_id in self.Graphs.keys()}
 
-   def is_cyclic(self, graph_id:str) -> bool:
+   def is_cyclic(self, graph_id:int) -> bool:
       return self.Graphs[graph_id].is_cyclic()
 
-   def longest_path(self, graph_id:str, directed=True)->list:
+   def longest_path(self, graph_id:int, directed=True)->list:
       return self.Graphs[graph_id].findLongestPath(directed=directed,connected=self.Graphs[graph_id].connected)
 
-   def is_connected(self,graph_id:str) -> str:
+   def is_connected(self,graph_id:int) -> bool:
       return self.Graphs[graph_id].is_connected()
 
    def __len__(self):
