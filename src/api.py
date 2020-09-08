@@ -60,7 +60,16 @@ class GraphsById(Resource):
 
 class GraphsByPage(Resource):
    def get(self,page_no):
-      return graphs.getGraphsByPage(page_no)
+
+      output = graphs.getGraphsByPage(page_no)
+
+      if output:
+         output["status"] = 200
+         return output
+      
+      return {"status" : 404, "message": f"page {page_no} does not exist."}
+      
+
 
 
 class GraphCount(Resource):
@@ -81,3 +90,8 @@ class GraphRD(Resource):
          return {"status": 204, "message":f"Graph {graph_id} deleted"}
 
       return {"status": 404, "message": f"Graph {graph_id} not found."}
+
+# For testing purposes
+class GraphAsTable(Resource):
+   def get(self,graph_id):
+      graphs.getGraphtbl(graph_id)

@@ -21,6 +21,14 @@ class Node:
    def __ne__(self, other):
       return not(other.label == self.label)
 
+   def as_dict(self) -> dict:
+      """Returns a node as a dictionary object."""
+      return {"label" : self.label, 
+      "incoming" : [(edge.get_src().id) for edge in self.incomingEdges], 
+      "outgoing" : [(edge.get_trg().id) for edge in self.outgoingEdges], 
+      "anchors" : list(self.anchors.keys()),
+      "rank" : len(self.anchors.keys())}
+
    def __str__(self):
       return f"ID: {self.id}\nLabel: {self.label}\nIncoming edges: {self.incomingEdges}\nOutgoing Edges: {self.outgoingEdges}\nAnchored: {list(self.anchors.values())}"
 
@@ -82,9 +90,20 @@ class Edge:
       """Returns an edge's source node."""
       return self.node_source
 
-   def get_nodes(self) -> dict:
-      """Function that returns an edge's labels and target & source nodes in a dictionary string format."""
-      return {"src_node": {"label" : self.get_src().label, "id" : self.get_src().id}, "edge_labels": f"{self.label}/{self.post_label}", "trg_node" : {"label":self.get_trg().label,"id":self.get_trg().id}}
+   def as_dict(self) -> dict:
+      """Function that returns an edge's labels and target & source nodes in dictionary format."""
+      edge_dict = {}
+
+      if self.node_source:
+         edge_dict["src"] = self.node_source.id
+
+      if self.node_target:
+         edge_dict["trg"] = self.node_target.id
+
+      edge_dict["label"] =self.label 
+      edge_dict["post-label"] = self.post_label
+
+      return edge_dict
 
    def __repr__(self):
       return f"src: {self.node_source.label} -{self.label}/{self.post_label}-> trg: {self.node_target.label}"
@@ -110,12 +129,26 @@ class Token:
 
       if 'carg' in token_input:
          self.carg = token_input['carg']
+      else:
+         self.carg = None
 
    def __repr__(self):
       if self.form != self.lemma:
          return f"[Form: {self.form} -> Lemma: {self.lemma}]"
 
       return f"[Form: {self.form}]"
+
+   def as_dict(self) -> dict:
+      token_dict = {}
+      token_dict["form"] = self.form
+
+      if self.form != self.lemma:
+         token_dict["lemma"] = self.lemma
+
+      if self.carg is not None:
+         token_dict["carg"] = self.carg
+
+      return token_dict
 
 class Graph:
    """
@@ -137,9 +170,6 @@ class Graph:
    
    Methods
    ---------
-
-
-
    """
    def __init__(self,graph_input):
       """ 
@@ -153,7 +183,7 @@ class Graph:
       self.id = int(graph_input['id'])
       self.tokens = {token['index']: Token(token_input=token) for token in graph_input['tokens']}
       self.nodes = {node['id']: Node(node_input=node,tokens=self.tokens) for node in graph_input['nodes']}
-      self.edges = {f"{self.nodes[edge['source']].label}-{edge['label']}/{edge['post-label']}-{self.nodes[edge['target']].label}":   Edge(self.nodes[edge['source']],self.nodes[edge['target']],edge['label'],edge['post-label']) for edge in graph_input['edges']}
+      self.edges = {f"{edge['source']}-{edge['label']}/{edge['post-label']}-{edge['target']}":   Edge(self.nodes[edge['source']],self.nodes[edge['target']],edge['label'],edge['post-label']) for edge in graph_input['edges']}
       self.top = self.nodes[graph_input['tops'][0]]
 
       self.connected = None
@@ -186,12 +216,6 @@ class Graph:
    
    def __str__(self):
        return " ".join([str(node) for node in self.nodes.values()])
-
-   def as_dict(self) -> dict:
-      """Returns the graph in a dictionary format. 
-      
-      Created with the intention of sending modified graph objects to the front-end that are easier to present using the javascript D3 library"""
-      return {node.id: str(node) for node in self.nodes.values()}
 
    def BFS_cycle(self,transpose=False) -> bool:
       """Does a Breadth First Search in order to ascertain whether a graph is cyclic."""
@@ -317,7 +341,7 @@ class Graph:
          for args in subgraph[node_src]:
             key = f"{node_src}-{args[1].upper()}/{args[2].upper()}-{args[0]}"
             if key in self.edges.keys():
-               edges.append(self.edges[key].get_nodes())
+               edges.append(self.edges[key].get_dict())
 
             
       if len(edges) > 0:
@@ -328,7 +352,65 @@ class Graph:
    def adj_nodes(self,node_id:int) -> list:
       """Returns a list of adjacent nodes"""
       node = self.nodes[node_id]
-      return node.get_neighbours(True) + node.get_neighbours(False) #remove node_id from get_nodes
+      return node.get_neighbours(True) + node.get_neighbours(False)
+
+   def as_dict(self) -> dict:
+      """Returns the graph in a dictionary format.   
+      Created with the intention of sending modified graph objects to the front-end that are easier to present using the javascript D3 library"""
+      return {"nodes" : {str(node): self.nodes[node].as_dict() for node in self.nodes},
+       "edges" : [edge.as_dict() for edge in self.edges.values()], 
+       "tokens" : {str(token): self.tokens[token].as_dict() for token in self.tokens.keys()} }
+
+   # For testing purposes
+   def as_tbl(self):
+      """Returns a given graph in tabular format"""
+      print("id,label")
+      for node in self.nodes.values():
+         print(f"{node.id},{node.label}")
+      print()
+      print("from,to,weight")
+      for edge in self.edges.values():
+         print(f"{edge.node_source.id},{edge.node_target.id},0")
+
+   # For testing purposes
+   def as_dot(self):
+      """Returns a given graph in DOT format."""
+      surface = []
+      abstract = {}
+      for node in self.nodes.values():
+         if node.label[0] == "_":
+            surface.append(node)
+         else:
+            if len(node.anchors) not in abstract:
+               abstract[len(node.anchors)] = []
+
+            abstract[len(node.anchors)].append(node)
+            
+      keys = list(abstract.keys())
+      keys.sort(reverse=True)
+
+      lst=[]
+      for node in abstract[keys[0]]:
+         lst.append(str(node.id))
+         print(f"{node.id} [label = '{node.label}'];")
+      print("{rank = source;",";".join(lst),"}",sep="")
+
+
+      for key in keys[1:]:
+         lst=[]
+         for node in abstract[key]:
+            lst.append(str(node.id))
+            print(f"{node.id} [label = '{node.label}'];")
+         print("{rank = same;",";".join(lst),"}",sep="")
+
+      for node in surface:
+         print(f"{node.id} [label = '{node.label}'];")
+
+      print("{rank = sink;",";".join([str(node.id) for node in surface]),"}",sep="")
+
+      for edge in self.edges.values():
+         print(f"{edge.node_source.id} -> {edge.node_target.id} [label = '{edge.label}/{edge.post_label}']")
+
 
 
 class GraphManipulator:
@@ -339,12 +421,20 @@ class GraphManipulator:
       self.Graphs = {}
 
    def addGraph(self,graph_input):
+      """Adds a graph to the GraphManipulators Graph dictionary."""
       self.Graphs[int(graph_input['id'])] = Graph(graph_input)
 
+   # For testing purposes
+   def getGraphtbl(self,graph_id:int) -> Graph:
+      # self.Graphs.get(graph_id,None).as_tbl()
+      self.Graphs.get(graph_id,None).as_dot()
+
    def getGraph(self,graph_id:int) -> Graph:
+      """Returns a graph object corresponding to a graph_id"""
       return self.Graphs.get(graph_id,None)
 
    def delGraph(self,graph_id:int) -> bool:
+      """Function to delete a graph specified by graph_id. Returns a boolean indicating success."""
       if graph_id in self.Graphs:
          del self.Graphs[graph_id]
          return True
@@ -354,11 +444,11 @@ class GraphManipulator:
    def getGraphs(self,graph_id_list:list) -> dict:
       return {graph_id: self.Graphs[graph_id] for graph_id in graph_id_list}
 
-   def getGraphsByPage(self, page_no,graphs_per_page=5):
-
+   def getGraphsByPage(self, page_no,graphs_per_page=5) -> dict:
+      """Function to determine which graphs are to be displayed per page."""
       sorted_keys = list(self.Graphs.keys())
       sorted_keys.sort()
-      sorted_keys[graphs_per_page*(page_no-1):]
+      sorted_keys = sorted_keys[graphs_per_page*(page_no-1):]
 
       if len(sorted_keys) >= graphs_per_page:
          sorted_keys = sorted_keys[:graphs_per_page]
@@ -368,9 +458,19 @@ class GraphManipulator:
       for key in sorted_keys:
          graph_list.append(self.Graphs[key].as_dict())
 
-      return {"graphs" : graph_list, "remaining" : len(self.Graphs) - (len(graph_list)+ (page_no-1)*graphs_per_page ) }
+      total_remaining = len(self.Graphs) - (len(graph_list)+ (page_no-1)*graphs_per_page )
+      pages = total_remaining // graphs_per_page
+      if total_remaining % graphs_per_page != 0:
+         pages += 1
+
+      if total_remaining >= 0:
+         return {"graphs" : graph_list, "returned" : len(graph_list), "remaining" : {"graphs": total_remaining, "pages": pages } }
+      
+      return {}
+      
 
    def getNodeNeighbours(self,graph_id:int,node_id:int) -> dict:
+      """Function to get a given nodes neighbours from a specified graph"""
       graph = self.getGraph(graph_id)
 
       if graph is not None:
@@ -379,7 +479,7 @@ class GraphManipulator:
       return {"error":"graph id does not exist"}
 
    def getGraphsByNode(self,node_labels:list) -> dict:
-      
+      """Returns a list of graphs that contain a list of node labels."""
       graphs = {}
       for key in self.Graphs.keys():
          node_ids = self.Graphs[key].has_labels(node_labels)
@@ -390,6 +490,7 @@ class GraphManipulator:
 
 
    def checkProperties(self, graph_id_list:list)-> dict:
+      """Returns the properties of a list of graphs."""
       graph_id_list = [int(graph_id) for graph_id in graph_id_list]
 
       return {graph_id: {
@@ -399,15 +500,21 @@ class GraphManipulator:
           "longest_undirected_path" : str(self.longest_path((graph_id),directed=False))} for graph_id in graph_id_list if graph_id in self.Graphs}
       
    def checkSubgraph(self,json_subgraph:dict) -> dict:
+      """Function to find all graphs that contain a specified subgraph pattern.
+      
+      A dictionary of edge lists with a graph's id as the key is returned."""
       return {graph_id: self.Graphs[graph_id].subgraph_search(json_subgraph) for graph_id in self.Graphs.keys()}
 
    def is_cyclic(self, graph_id:int) -> bool:
+      """Function to determine whether a given graph, specified by graph_id, contains a cycle."""
       return self.Graphs[graph_id].is_cyclic()
 
    def longest_path(self, graph_id:int, directed=True)->list:
+      """Returns all the longest directed or undirected paths in a graph"""
       return self.Graphs[graph_id].findLongestPath(directed=directed,connected=self.Graphs[graph_id].connected)
 
    def is_connected(self,graph_id:int) -> bool:
+      """Function to determine whether a given graph, specified by graph_id, is connected."""
       return self.Graphs[graph_id].is_connected()
 
    def __len__(self):
