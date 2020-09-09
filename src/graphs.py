@@ -21,13 +21,16 @@ class Node:
    def __ne__(self, other):
       return not(other.label == self.label)
 
+   def is_surface(self):
+      return self.label[0] == "_"
+
    def as_dict(self) -> dict:
       """Returns a node as a dictionary object."""
       return {"label" : self.label, 
       "incoming" : [(edge.get_src().id) for edge in self.incomingEdges], 
       "outgoing" : [(edge.get_trg().id) for edge in self.outgoingEdges], 
-      "anchors" : list(self.anchors.keys()),
-      "rank" : len(self.anchors.keys())}
+      "anchors" : list(self.anchors.keys())}
+
 
    def __str__(self):
       return f"ID: {self.id}\nLabel: {self.label}\nIncoming edges: {self.incomingEdges}\nOutgoing Edges: {self.outgoingEdges}\nAnchored: {list(self.anchors.values())}"
@@ -100,8 +103,7 @@ class Edge:
       if self.node_target:
          edge_dict["trg"] = self.node_target.id
 
-      edge_dict["label"] =self.label 
-      edge_dict["post-label"] = self.post_label
+      edge_dict["label"] = f"{self.label}/{ self.post_label}" 
 
       return edge_dict
 
@@ -141,9 +143,7 @@ class Token:
    def as_dict(self) -> dict:
       token_dict = {}
       token_dict["form"] = self.form
-
-      if self.form != self.lemma:
-         token_dict["lemma"] = self.lemma
+      token_dict["lemma"] = self.lemma
 
       if self.carg is not None:
          token_dict["carg"] = self.carg
@@ -357,59 +357,17 @@ class Graph:
    def as_dict(self) -> dict:
       """Returns the graph in a dictionary format.   
       Created with the intention of sending modified graph objects to the front-end that are easier to present using the javascript D3 library"""
-      return {"nodes" : {str(node): self.nodes[node].as_dict() for node in self.nodes},
-       "edges" : [edge.as_dict() for edge in self.edges.values()], 
-       "tokens" : {str(token): self.tokens[token].as_dict() for token in self.tokens.keys()} }
 
-   # For testing purposes
-   def as_tbl(self):
-      """Returns a given graph in tabular format"""
-      print("id,label")
-      for node in self.nodes.values():
-         print(f"{node.id},{node.label}")
-      print()
-      print("from,to,weight")
-      for edge in self.edges.values():
-         print(f"{edge.node_source.id},{edge.node_target.id},0")
+      graph_dict = {}
 
-   # For testing purposes
-   def as_dot(self):
-      """Returns a given graph in DOT format."""
-      surface = []
-      abstract = {}
-      for node in self.nodes.values():
-         if node.label[0] == "_":
-            surface.append(node)
-         else:
-            if len(node.anchors) not in abstract:
-               abstract[len(node.anchors)] = []
+      graph_dict["a_nodes"] = {str(node): self.nodes[node].as_dict() for node in self.nodes if not(self.nodes[node].is_surface())}
+      graph_dict["s_nodes"] = {str(node): self.nodes[node].as_dict() for node in self.nodes if self.nodes[node].is_surface()}
+      graph_dict["edges"] = [edge.as_dict() for edge in self.edges.values()]
+      graph_dict["tokens"] = {str(token): self.tokens[token].as_dict() for token in self.tokens.keys()}
+      graph_dict["tops"] = {str(self.top.id) : self.top.as_dict()}
+      graph_dict["sentence"] = self.sentence.split(" ")
 
-            abstract[len(node.anchors)].append(node)
-            
-      keys = list(abstract.keys())
-      keys.sort(reverse=True)
-
-      lst=[]
-      for node in abstract[keys[0]]:
-         lst.append(str(node.id))
-         print(f"{node.id} [label = '{node.label}'];")
-      print("{rank = source;",";".join(lst),"}",sep="")
-
-
-      for key in keys[1:]:
-         lst=[]
-         for node in abstract[key]:
-            lst.append(str(node.id))
-            print(f"{node.id} [label = '{node.label}'];")
-         print("{rank = same;",";".join(lst),"}",sep="")
-
-      for node in surface:
-         print(f"{node.id} [label = '{node.label}'];")
-
-      print("{rank = sink;",";".join([str(node.id) for node in surface]),"}",sep="")
-
-      for edge in self.edges.values():
-         print(f"{edge.node_source.id} -> {edge.node_target.id} [label = '{edge.label}/{edge.post_label}']")
+      return graph_dict
 
 
 
@@ -423,11 +381,6 @@ class GraphManipulator:
    def addGraph(self,graph_input):
       """Adds a graph to the GraphManipulators Graph dictionary."""
       self.Graphs[int(graph_input['id'])] = Graph(graph_input)
-
-   # For testing purposes
-   def getGraphtbl(self,graph_id:int) -> Graph:
-      # self.Graphs.get(graph_id,None).as_tbl()
-      self.Graphs.get(graph_id,None).as_dot()
 
    def getGraph(self,graph_id:int) -> Graph:
       """Returns a graph object corresponding to a graph_id"""

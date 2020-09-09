@@ -1,10 +1,12 @@
 from flask import Flask
 from flask_restful import Api
+from flask_cors import CORS
 from api import *
 
 
 def create_app(config: dict = None) -> Flask:
    app = Flask(__name__)
+   cors = CORS(app)
    api=Api(app)
    create_routes(api)
 
@@ -20,4 +22,3 @@ def create_routes(api:Api):
    api.add_resource(GraphsByPage,'/get_graphs/<int:page_no>')
    api.add_resource(GraphCount,'/graph_count')
    api.add_resource(GraphRD,'/graphs/<int:graph_id>')
-   api.add_resource(GraphAsTable,'/graph_tbl/<int:graph_id>') # For testing purposes

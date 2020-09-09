@@ -16,9 +16,8 @@ class LoadGraphs(Resource):
    def post(self):
 
       args = self.reqparse.parse_args()
-
       for graph in args['graphs']:
-         j_content = graphs.addGraph(json.loads(graph))
+         graphs.addGraph(json.loads(graph))
          
       return {"graphs":len(graphs)}
          
@@ -90,8 +89,3 @@ class GraphRD(Resource):
          return {"status": 204, "message":f"Graph {graph_id} deleted"}
 
       return {"status": 404, "message": f"Graph {graph_id} not found."}
-
-# For testing purposes
-class GraphAsTable(Resource):
-   def get(self,graph_id):
-      graphs.getGraphtbl(graph_id)
