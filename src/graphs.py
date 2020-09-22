@@ -117,7 +117,7 @@ class Edge:
       return hash(f"{self.node_source.label}-{self.label}/{self.post_label}-{self.node_target.label}")
 
    def __eq__(self,other):
-      return self.node_target == other.node_target and self.node_source == other.node_source and (f"{self.label}/{self.post_label}"==f"{other.label}/{other.post_label}")
+      return self.node_target.label == other.node_target.label and self.node_source.label == other.node_source.label and (f"{self.label}/{self.post_label}"==f"{other.label}/{other.post_label}")
 
 
 class Token:
@@ -183,7 +183,7 @@ class Graph:
       self.id = int(graph_input['id'])
       self.tokens = {token['index']: Token(token_input=token) for token in graph_input['tokens']}
       self.nodes = {node['id']: Node(node_input=node,tokens=self.tokens) for node in graph_input['nodes']}
-      self.edges = {f"{edge['source']}-{edge['label']}/{edge['post-label']}-{edge['target']}":   Edge(self.nodes[edge['source']],self.nodes[edge['target']],edge['label'],edge['post-label']) for edge in graph_input['edges']}
+      self.edges = {f"{self.nodes[edge['source']].label}-{edge['label']}/{edge['post-label']}-{self.nodes[edge['target']].label}":   Edge(self.nodes[edge['source']],self.nodes[edge['target']],edge['label'],edge['post-label']) for edge in graph_input['edges']}
       self.top = self.nodes[graph_input['tops'][0]]
 
       self.connected = None
@@ -193,6 +193,25 @@ class Graph:
 
    def __eq__(self,other):
       return self.id == other.id
+
+   def compare(self,other):
+      """Method to compare 2 graphs and return similarities and differences."""
+
+      if self.sentence != other.sentence:
+         return {"message" : "Cannot compare graphs with difference sentences."}
+
+      result = {}
+
+      matching_edges = self.edges.keys() & other.edges.keys()
+      different_edges = self.edges.keys() ^ other.edges.keys()
+
+      result["matching"] = list(matching_edges)
+      
+      result["graph_1"] = list(self.edges.keys() & different_edges)
+      result["graph_2"] = list(other.edges.keys() & different_edges)
+
+      return result
+
 
    def display(self):
       """Displays all nodes and edges in a graph in string format."""
@@ -341,9 +360,9 @@ class Graph:
          for args in subgraph[node_src]:
             key = f"{node_src}-{args[1].upper()}/{args[2].upper()}-{args[0]}"
             if key in self.edges.keys():
-               edges.append(self.edges[key].get_dict())
+               edges.append(self.edges[key].as_dict())
 
-            
+
       if len(edges) > 0:
          return {"links" :edges}
 
@@ -360,12 +379,13 @@ class Graph:
 
       graph_dict = {}
 
+      graph_dict["id"] = str(self.id)
       graph_dict["a_nodes"] = {str(node): self.nodes[node].as_dict() for node in self.nodes if not(self.nodes[node].is_surface())}
       graph_dict["s_nodes"] = {str(node): self.nodes[node].as_dict() for node in self.nodes if self.nodes[node].is_surface()}
       graph_dict["edges"] = [edge.as_dict() for edge in self.edges.values()]
       graph_dict["tokens"] = {str(token): self.tokens[token].as_dict() for token in self.tokens.keys()}
       graph_dict["tops"] = {str(self.top.id) : self.top.as_dict()}
-      graph_dict["sentence"] = self.sentence.split(" ")
+      graph_dict["sentence"] = [token.form for token in self.tokens.values()]
 
       return graph_dict
 
@@ -421,6 +441,17 @@ class GraphManipulator:
       
       return {}
       
+   def compare(self,graph_id_1,graph_id_2):
+      """Method to compare 2 graphs and return all similarities and differences in dictionary format."""
+
+      graph_1 = self.getGraph(graph_id_1)
+      graph_2 = self.getGraph(graph_id_2)
+
+      if graph_1 is None or graph_2 is None:
+         return {"message" : "invalid graph id given"}
+
+      return graph_1.compare(graph_2)
+
 
    def getNodeNeighbours(self,graph_id:int,node_id:int) -> dict:
       """Function to get a given nodes neighbours from a specified graph"""
@@ -456,7 +487,15 @@ class GraphManipulator:
       """Function to find all graphs that contain a specified subgraph pattern.
       
       A dictionary of edge lists with a graph's id as the key is returned."""
-      return {graph_id: self.Graphs[graph_id].subgraph_search(json_subgraph) for graph_id in self.Graphs.keys()}
+
+      graph_dict = {}
+
+      for graph_id in self.Graphs:
+         edge_list = self.Graphs[graph_id].subgraph_search(json_subgraph)
+         if edge_list:
+            graph_dict[graph_id] = edge_list
+      
+      return graph_dict
 
    def is_cyclic(self, graph_id:int) -> bool:
       """Function to determine whether a given graph, specified by graph_id, contains a cycle."""

@@ -27,6 +27,13 @@ class NodeNeighbours(Resource):
 
       return graphs.getNodeNeighbours(graph_id,node_id)
 
+class GraphComparison(Resource):
+
+   def get(self,graph_id_1,graph_id_2):
+
+      return graphs.compare(graph_id_1,graph_id_2)
+
+
 class GraphsBySubgraph(Resource):
    def get(self):
       subgraph = request.get_json(force=True)

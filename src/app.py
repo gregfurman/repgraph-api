@@ -22,3 +22,4 @@ def create_routes(api:Api):
    api.add_resource(GraphsByPage,'/get_graphs/<int:page_no>')
    api.add_resource(GraphCount,'/graph_count')
    api.add_resource(GraphRD,'/graphs/<int:graph_id>')
+   api.add_resource(GraphComparison,'/compare/<int:graph_id_1>_<int:graph_id_2>')
