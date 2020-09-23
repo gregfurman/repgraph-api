@@ -479,6 +479,7 @@ class GraphManipulator:
       if graph_id in self.Graphs:
 
          return {
+            "id" : str(graph_id),
             "connected" : str(self.is_connected(graph_id)), 
             "acylic" : str(self.is_cyclic(graph_id)), 
             "longest_directed_path" : str(self.longest_path(graph_id)),

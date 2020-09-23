@@ -41,7 +41,15 @@ class GraphsBySubgraph(Resource):
 
 class GraphProperties(Resource):
    def get(self,graph_id):
-      return graphs.checkProperties(graph_id)
+
+      result = graphs.checkProperties(graph_id)
+
+      if result:
+         result['status'] = 200
+         result['message'] = f"Successfully found the properties of Graph {graph_id}."
+         return result
+
+      return {'status' : 404, 'message' : f"Error: Graph {graph_id} not found."}
 
 class GraphsByNodes(Resource):
    def get(self):
