@@ -15,7 +15,7 @@ def create_app(config: dict = None) -> Flask:
 def create_routes(api:Api):
    api.add_resource(LoadGraphs, '/load_graphs')
    api.add_resource(NodeNeighbours, '/display_node_neighbours/<int:graph_id>_<int:node_id>')
-   api.add_resource(GraphProperties, '/graph_properties')
+   api.add_resource(GraphProperties, '/graph_properties/<int:graph_id>')
    api.add_resource(GraphsBySubgraph,'/search_subgraph')
    api.add_resource(GraphsByNodes,'/node_search')
    api.add_resource(GraphsById,'/get_graphs')

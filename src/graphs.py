@@ -473,15 +473,18 @@ class GraphManipulator:
       return graphs
 
 
-   def checkProperties(self, graph_id_list:list)-> dict:
-      """Returns the properties of a list of graphs."""
-      graph_id_list = [int(graph_id) for graph_id in graph_id_list]
+   def checkProperties(self, graph_id:int)-> dict:
+      """Returns the properties for a specified graph of id 'graph_id'."""
 
-      return {graph_id: {
-         "connected" : str(self.is_connected(graph_id)), 
-         "acylic" : str(self.is_cyclic(graph_id)), 
-         "longest_directed_path" : str(self.longest_path(graph_id)),
-          "longest_undirected_path" : str(self.longest_path((graph_id),directed=False))} for graph_id in graph_id_list if graph_id in self.Graphs}
+      if graph_id in self.Graphs:
+
+         return {
+            "connected" : str(self.is_connected(graph_id)), 
+            "acylic" : str(self.is_cyclic(graph_id)), 
+            "longest_directed_path" : str(self.longest_path(graph_id)),
+            "longest_undirected_path" : str(self.longest_path((graph_id),directed=False))}
+      
+      return {}
       
    def checkSubgraph(self,json_subgraph:dict) -> dict:
       """Function to find all graphs that contain a specified subgraph pattern.

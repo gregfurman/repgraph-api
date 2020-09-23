@@ -40,14 +40,8 @@ class GraphsBySubgraph(Resource):
       return graphs.checkSubgraph(subgraph)
 
 class GraphProperties(Resource):
-   def __init__(self):
-      self.reqparse = reqparse.RequestParser()
-      self.reqparse.add_argument('graphID',action="append")
-      super(GraphProperties,self).__init__()
-
-   def get(self):
-      args = self.reqparse.parse_args()
-      return graphs.checkProperties(args['graphID'])
+   def get(self,graph_id):
+      return graphs.checkProperties(graph_id)
 
 class GraphsByNodes(Resource):
    def get(self):
