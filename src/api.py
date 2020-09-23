@@ -16,22 +16,57 @@ class LoadGraphs(Resource):
    def post(self):
 
       args = self.reqparse.parse_args()
+      errors = []
+      counter = 0
       for graph in args['graphs']:
-         graphs.addGraph(json.loads(graph))
+         counter += 1
+         check = graphs.addGraph(json.loads(graph))
+
+
+         if "error" in check:
+            errors.append(check['error'])
          
-      return {"graphs":len(graphs)}
+      if counter == len(graphs):
+         return {"status" : 200, "message" : f"Successfully uploaded all {len(graphs)} graphs."}
+
+      return {"status" : 400, "error" : "Bad Request", "message" : f"Expected {counter} but found {len(graphs)} unique graphs.", "error_logs" : "\n".join(errors) }
          
 class NodeNeighbours(Resource):
 
    def get(self,graph_id,node_id):
 
-      return graphs.getNodeNeighbours(graph_id,node_id)
+      result = graphs.getNodeNeighbours(graph_id,node_id)
+
+      if "error" in result:
+         result["status"] = 404
+         result["message"] = f"The neighbours of node {node_id} in graph {graph_id} have not been successfully returned."
+         return result
+
+      result["status"] = 200
+      result["message"] = f"The neighbours of node {node_id} in graph {graph_id} have been successfully returned."
+      return result
 
 class GraphComparison(Resource):
 
    def get(self,graph_id_1,graph_id_2):
 
-      return graphs.compare(graph_id_1,graph_id_2)
+      result = graphs.compare(graph_id_1,graph_id_2)
+
+      if "error" in result:
+         if result["status"] == 400:
+            result["message"] = f"Bad request."
+         elif result["status"] == 404:
+            result["message"] = f"Graph {graph_id_1} and/or Graph {graph_id_2} do not exist."
+         else:
+            result["message"] = f"Internal server error."
+            result["status"] = 500
+
+      result["status"] = 200
+      result["message"] = "Differences and similarities have been successfully returned."
+
+      return result            
+      
+      
 
 
 class GraphsBySubgraph(Resource):
@@ -53,18 +88,55 @@ class GraphProperties(Resource):
 
 class GraphsByNodes(Resource):
    def get(self):
-      args = self.reqparse.parse_args()
-      return graphs.getGraphsByNode(args["node_labels"])
+      result =  {}
+
+      try:
+         args = request.get_json(force=True)
+         graph_list = graphs.getGraphsByNode(args["node_labels"])
+
+         if graph_list:
+            result["output"] = graph_list
+            result["message"] = "Successfully returned graphs"
+            result["status"] = 200
+         else:
+            result["message"] = "No graphs returned."
+            result["status"] = 404
+
+      except:
+         result["error"] = "Failed to decode JSON object."
+         result["status"] = 400
+
+      return result
+
+
 
 class GraphsById(Resource):
- def __init__(self):
-      self.reqparse = reqparse.RequestParser()
-      self.reqparse.add_argument('graph_id_list')
-      super(GraphsById, self).__init__()
-
  def get(self):
-      args = self.reqparse.parse_args()
-      return graphs.getGraphs(args["graph_id_list"])
+
+   result = {}
+
+   try:
+      args = request.get_json(force=True)
+   except:
+      result["error"] = "Failed to decode JSON object."
+      result["status"] = 400
+      return result
+
+   graph_list = graphs.getGraphs(args["graph_id_list"])
+
+   if graph_list:
+      result["output"] = graph_list
+      result["status"] = 202
+      result["message"] = "Returned all graph ID present in graph collection."
+   else:
+      result["status"] = 404
+      result["message"] = "No graphs found."
+
+
+   return result
+
+      
+
 
 class GraphsByPage(Resource):
    def get(self,page_no):

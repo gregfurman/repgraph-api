@@ -188,6 +188,7 @@ class Graph:
 
       self.connected = None
 
+
    def __iter__(self,other):
       return self.id < other.id
 
@@ -198,7 +199,7 @@ class Graph:
       """Method to compare 2 graphs and return similarities and differences."""
 
       if self.sentence != other.sentence:
-         return {"message" : "Cannot compare graphs with difference sentences."}
+         return {"error" : "Cannot compare graphs with difference sentences.", "status" : 400}
 
       result = {}
 
@@ -219,7 +220,7 @@ class Graph:
 
    def getNode(self,node_id:int) -> Node:
       """Returns a node from the 'nodes' dictionary that correspond to graph_id."""
-      return self.nodes[node_id]
+      return self.nodes.get(node_id,None)
 
    def getNodes(self) -> list:
       """Returns all nodes in a graph in a list."""
@@ -400,7 +401,18 @@ class GraphManipulator:
 
    def addGraph(self,graph_input):
       """Adds a graph to the GraphManipulators Graph dictionary."""
-      self.Graphs[int(graph_input['id'])] = Graph(graph_input)
+
+      graph_id = int(graph_input['id'])
+
+      if graph_id in self.Graphs:
+         return {"success" : False, "error" : f"Graph id {graph_id} already exists and will be overwritten."  ,"graph_id" : graph_id }
+
+      try:
+         self.Graphs[graph_id] = Graph(graph_input)
+      except:
+         return {"success" : False, "error" : f"Graph id {graph_id} failed to be parsed succsessfully and is likely malformed.","graph_id" : graph_id}
+
+      return {"success" : True}
 
    def getGraph(self,graph_id:int) -> Graph:
       """Returns a graph object corresponding to a graph_id"""
@@ -415,7 +427,13 @@ class GraphManipulator:
       return False
 
    def getGraphs(self,graph_id_list:list) -> dict:
-      return {graph_id: self.Graphs[graph_id] for graph_id in graph_id_list}
+      
+      graph_id_list = set([graph_id for graph_id in graph_id_list])
+      matching = graph_id_list & self.Graphs.keys()
+      if matching:
+         return {graph_id: self.Graphs[graph_id].as_dict() for graph_id in matching}
+
+      return {}
 
    def getGraphsByPage(self, page_no,graphs_per_page=5) -> dict:
       """Function to determine which graphs are to be displayed per page."""
@@ -448,19 +466,30 @@ class GraphManipulator:
       graph_2 = self.getGraph(graph_id_2)
 
       if graph_1 is None or graph_2 is None:
-         return {"message" : "invalid graph id given"}
+         return {"error" : "One or more of the specified graphs have an invalid graph_id.", "status" : 404}
 
-      return graph_1.compare(graph_2)
+      try:
+         result = graph_1.compare(graph_2)
+      except:
+         result = {"error" : f"Failed to compare graph {graph_id_1} and {graph_id_2}."}
 
+      return result
 
    def getNodeNeighbours(self,graph_id:int,node_id:int) -> dict:
       """Function to get a given nodes neighbours from a specified graph"""
       graph = self.getGraph(graph_id)
+      node = None
 
-      if graph is not None:
-         return graph.getNode(node_id).get_neighbours(as_json=True)
-      
-      return {"error":"graph id does not exist"}
+      if graph is None:
+         return {"error":f"graph_id {graph_id} does not exist."}
+
+      node = graph.getNode(node_id)
+
+      if node is None:
+         return {"error":f"node_id {node_id} of graph {graph_id} does not exist."}
+
+      return node.get_neighbours(as_json=True)
+
 
    def getGraphsByNode(self,node_labels:list) -> dict:
       """Returns a list of graphs that contain a list of node labels."""
