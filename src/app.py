@@ -2,12 +2,19 @@ from flask import Flask
 from flask_restful import Api
 from flask_cors import CORS
 from api import *
+from errors import custom_errors
 
 
 def create_app(config: dict = None) -> Flask:
    app = Flask(__name__)
    cors = CORS(app)
-   api=Api(app)
+   api=Api(app,errors=custom_errors)
+
+   @app.errorhandler(404)
+   def page_not_found(e):
+      return {"message" : "page not found"}, 404
+
+
    create_routes(api)
 
    return app

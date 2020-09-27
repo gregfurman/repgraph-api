@@ -151,6 +151,8 @@ class Token:
       return token_dict
 
 class Graph:
+   from collections import deque
+   from errors import GraphParseError, NodeNotFoundError
    """
    A Graph object keeps a list of all the Nodes, Edges, Tokens, the original sentence being parsed and a single variable for a top node.
    There are multiple functions within the Graph class that allow for checking formal graph properties and longest directional & non-directional paths. 
@@ -189,6 +191,7 @@ class Graph:
       self.connected = None
 
 
+
    def __iter__(self,other):
       return self.id < other.id
 
@@ -199,7 +202,7 @@ class Graph:
       """Method to compare 2 graphs and return similarities and differences."""
 
       if self.sentence != other.sentence:
-         return {"error" : "Cannot compare graphs with difference sentences.", "status" : 400}
+         return {}
 
       result = {}
 
@@ -220,7 +223,12 @@ class Graph:
 
    def getNode(self,node_id:int) -> Node:
       """Returns a node from the 'nodes' dictionary that correspond to graph_id."""
-      return self.nodes.get(node_id,None)
+      node = self.nodes.get(node_id,None)
+      
+      if node is not None:
+         return node
+
+      raise self.NodeNotFoundError(f"node_id {node_id} of graph {self.id} does not exist.")
 
    def getNodes(self) -> list:
       """Returns all nodes in a graph in a list."""
@@ -243,14 +251,17 @@ class Graph:
          nodes = {node.id: len(node.outgoingEdges) for node in self.nodes.values()}
       else:
          nodes = {node.id: len(node.incomingEdges) for node in self.nodes.values()}
-      queue = [key for key in nodes.keys() if nodes[key] ==0]
 
+      queue = self.deque()
+      for key in nodes.keys():
+         if nodes[key] == 0:
+            queue.append(key)
 
       visited = 0
 
       while queue:
 
-         s = queue.pop(0)
+         s = queue.popleft()
 
          visited += 1
 
@@ -265,11 +276,11 @@ class Graph:
    def BFS_connected(self,s_node:int) -> bool:
       """Does a Breadth First Search in order to determine whether a graph is connected."""
       visited = [False]*len(self.nodes)
-      queue = [s_node]
+      queue = self.deque([s_node])
 
       while queue:
 
-         s = queue.pop(0)
+         s = queue.popleft()
 
          for node_id in self.nodes[s].get_neighbours(incoming=False) + self.nodes[s].get_neighbours(incoming=True):
             if visited[node_id] == False:
@@ -396,27 +407,38 @@ class GraphManipulator:
    """
    The GraphManipulator class serves as a controller for the all graphs loaded via the API.
    """
+   from errors import GraphNotFoundError,NodeNotFoundError, GraphComparisonError, GraphParseError, GraphAlreadyExists, GraphsNotFound
+
    def __init__(self):
       self.Graphs = {}
 
-   def addGraph(self,graph_input):
+   def clear(self):
+      """Creates a clear dictionary for graph objects."""
+      self.Graphs = {}
+
+   def addGraph(self,graph_input:dict) -> dict:
       """Adds a graph to the GraphManipulators Graph dictionary."""
 
       graph_id = int(graph_input['id'])
 
       if graph_id in self.Graphs:
-         return {"success" : False, "error" : f"Graph id {graph_id} already exists and will be overwritten."  ,"graph_id" : graph_id }
-
+         raise self.GraphAlreadyExists(f"Graph id {graph_id} already exists and cannot be overwritten.")
       try:
          self.Graphs[graph_id] = Graph(graph_input)
       except:
-         return {"success" : False, "error" : f"Graph id {graph_id} failed to be parsed succsessfully and is likely malformed.","graph_id" : graph_id}
+         raise self.GraphParseError(f"Graph id {graph_id} failed to be parsed succsessfully and is likely malformed.")
+      
+      return self.Graphs[graph_id].id
 
-      return {"success" : True}
 
    def getGraph(self,graph_id:int) -> Graph:
       """Returns a graph object corresponding to a graph_id"""
-      return self.Graphs.get(graph_id,None)
+
+      graph = self.Graphs.get(graph_id,None)
+      if graph is not None:
+         return graph
+
+      raise self.GraphNotFoundError(f"graph_id {graph_id} does not exist.") 
 
    def delGraph(self,graph_id:int) -> bool:
       """Function to delete a graph specified by graph_id. Returns a boolean indicating success."""
@@ -459,34 +481,30 @@ class GraphManipulator:
       
       return {}
       
-   def compare(self,graph_id_1,graph_id_2):
+   def compare(self,graph_id_1:int,graph_id_2:int) -> dict:
       """Method to compare 2 graphs and return all similarities and differences in dictionary format."""
 
       graph_1 = self.getGraph(graph_id_1)
       graph_2 = self.getGraph(graph_id_2)
 
       if graph_1 is None or graph_2 is None:
-         return {"error" : "One or more of the specified graphs have an invalid graph_id.", "status" : 404}
+         raise self.GraphNotFoundError(f"Graph {graph_id_1} and/or Graph {graph_id_2} do not exist.")
 
-      try:
-         result = graph_1.compare(graph_2)
-      except:
-         result = {"error" : f"Failed to compare graph {graph_id_1} and {graph_id_2}."}
+      result = graph_1.compare(graph_2)
+
+      if not(result):
+         raise self.GraphComparisonError(f"Attempting to compare graphs with differing sentences.")
 
       return result
 
    def getNodeNeighbours(self,graph_id:int,node_id:int) -> dict:
       """Function to get a given nodes neighbours from a specified graph"""
       graph = self.getGraph(graph_id)
-      node = None
-
-      if graph is None:
-         return {"error":f"graph_id {graph_id} does not exist."}
 
       node = graph.getNode(node_id)
 
       if node is None:
-         return {"error":f"node_id {node_id} of graph {graph_id} does not exist."}
+         raise self.NodeNotFoundError
 
       return node.get_neighbours(as_json=True)
 
@@ -498,23 +516,24 @@ class GraphManipulator:
          node_ids = self.Graphs[key].has_labels(node_labels)
          if node_ids:
             graphs[key]=node_ids
+      
+      if graphs:
+         return graphs
 
-      return graphs
+      raise self.GraphsNotFound(f"No graphs with labels matching {str(node_labels)} were found.")
 
 
    def checkProperties(self, graph_id:int)-> dict:
       """Returns the properties for a specified graph of id 'graph_id'."""
 
-      if graph_id in self.Graphs:
+      graph = self.getGraph(graph_id)
 
-         return {
-            "id" : str(graph_id),
-            "connected" : str(self.is_connected(graph_id)), 
-            "acylic" : str(self.is_cyclic(graph_id)), 
-            "longest_directed_path" : str(self.longest_path(graph_id)),
-            "longest_undirected_path" : str(self.longest_path((graph_id),directed=False))}
-      
-      return {}
+      return {
+         "id" : str(graph_id),
+         "connected" : str(self.is_connected(graph)), 
+         "acylic" : str(self.is_cyclic(graph)), 
+         "longest_directed_path" : str(self.longest_path(graph)),
+         "longest_undirected_path" : str(self.longest_path(graph,directed=False))}
       
    def checkSubgraph(self,json_subgraph:dict) -> dict:
       """Function to find all graphs that contain a specified subgraph pattern.
@@ -530,17 +549,17 @@ class GraphManipulator:
       
       return graph_dict
 
-   def is_cyclic(self, graph_id:int) -> bool:
-      """Function to determine whether a given graph, specified by graph_id, contains a cycle."""
-      return self.Graphs[graph_id].is_cyclic()
+   def is_cyclic(self, graph:Graph) -> bool:
+      """Function to determine whether a given graph, specified by 'graph', contains a cycle."""
+      return graph.is_cyclic()
 
-   def longest_path(self, graph_id:int, directed=True)->list:
-      """Returns all the longest directed or undirected paths in a graph"""
-      return self.Graphs[graph_id].findLongestPath(directed=directed,connected=self.Graphs[graph_id].connected)
+   def longest_path(self, graph:Graph, directed=True)->list:
+      """Returns all the longest directed or undirected paths in a graph object"""
+      return graph.findLongestPath(directed=directed,connected=graph.connected)
 
-   def is_connected(self,graph_id:int) -> bool:
-      """Function to determine whether a given graph, specified by graph_id, is connected."""
-      return self.Graphs[graph_id].is_connected()
+   def is_connected(self,graph:Graph) -> bool:
+      """Function to determine whether a given graph, specified by 'graph', is connected."""
+      return graph.is_connected()
 
    def __len__(self):
       return len(self.Graphs.keys())
