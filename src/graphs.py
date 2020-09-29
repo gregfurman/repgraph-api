@@ -407,7 +407,7 @@ class GraphManipulator:
    """
    The GraphManipulator class serves as a controller for the all graphs loaded via the API.
    """
-   from errors import GraphNotFoundError,NodeNotFoundError, GraphComparisonError, GraphParseError, GraphAlreadyExists, GraphsNotFound
+   from errors import GraphNotFoundError,NodeNotFoundError, GraphComparisonError, GraphParseError, GraphAlreadyExists, GraphsNotFound,GraphIdNotInteger,NoNodeLabelsSupplied
 
    def __init__(self):
       self.Graphs = {}
@@ -433,6 +433,12 @@ class GraphManipulator:
 
    def getGraph(self,graph_id:int) -> Graph:
       """Returns a graph object corresponding to a graph_id"""
+      
+      if not isinstance(graph_id, int):
+         if graph_id.isnumeric():
+            graph_id = int(graph_id)
+         else:
+            raise self.GraphIdNotInteger(f"graph_id {graph_id} is not numeric.")
 
       graph = self.Graphs.get(graph_id,None)
       if graph is not None:
@@ -448,17 +454,46 @@ class GraphManipulator:
 
       return False
 
-   def getGraphs(self,graph_id_list:list) -> dict:
+   def getGraphs(self,graph_id_list:list) -> tuple:
+      """Returns a collection of graph objects from a list of ids. """
       
-      graph_id_list = set([graph_id for graph_id in graph_id_list])
-      matching = graph_id_list & self.Graphs.keys()
-      if matching:
-         return {graph_id: self.Graphs[graph_id].as_dict() for graph_id in matching}
+      graphs = {}
+      error_logs = []
+      for graph_id in graph_id_list:
+         try:
+            graphs[str(graph_id)] = self.getGraph(graph_id).as_dict()
+         except (self.GraphIdNotInteger,self.GraphNotFoundError) as e:
+            error_logs.append(str(e))
 
-      return {}
 
-   def getGraphsByPage(self, page_no,graphs_per_page=5) -> dict:
+      if not graphs:
+         raise self.GraphNotFoundError("None of the listed graph ids were found.")
+
+
+      return graphs,list(graphs.keys()),error_logs
+      
+
+      # graph_id_list = set([graph_id for graph_id in graph_id_list])
+      # matching = graph_id_list & self.Graphs.keys()
+      # if matching:
+      #    return {graph_id: self.Graphs[graph_id].as_dict() for graph_id in matching},matching
+
+      # return {}
+
+   def getGraphsByPage(self, page_no:int,graphs_per_page=5) -> dict:
       """Function to determine which graphs are to be displayed per page."""
+      
+      if not isinstance(page_no,int):
+         raise TypeError
+
+      if page_no < 1:
+         page_no=1
+      else:
+         total_pages = len(self.Graphs) // graphs_per_page + (1 if len(self.Graphs) % graphs_per_page else 0)
+
+         if page_no > total_pages:
+            page_no = total_pages
+
       sorted_keys = list(self.Graphs.keys())
       sorted_keys.sort()
       sorted_keys = sorted_keys[graphs_per_page*(page_no-1):]
@@ -467,6 +502,7 @@ class GraphManipulator:
          sorted_keys = sorted_keys[:graphs_per_page]
          
       graph_list=[]
+
 
       for key in sorted_keys:
          graph_list.append(self.Graphs[key].as_dict())
@@ -477,18 +513,13 @@ class GraphManipulator:
          pages += 1
 
       if total_remaining >= 0:
-         return {"graphs" : graph_list, "returned" : len(graph_list), "remaining" : {"graphs": total_remaining, "pages": pages } }
+         return {"graphs" : graph_list,"graph_ids":sorted_keys, "page_no" : page_no,"returned" : len(graph_list), "remaining" : {"graphs": total_remaining, "pages": pages } }
       
-      return {}
-      
-   def compare(self,graph_id_1:int,graph_id_2:int) -> dict:
+   def compare(self,graph_id_1:str,graph_id_2:str) -> dict:
       """Method to compare 2 graphs and return all similarities and differences in dictionary format."""
 
       graph_1 = self.getGraph(graph_id_1)
       graph_2 = self.getGraph(graph_id_2)
-
-      if graph_1 is None or graph_2 is None:
-         raise self.GraphNotFoundError(f"Graph {graph_id_1} and/or Graph {graph_id_2} do not exist.")
 
       result = graph_1.compare(graph_2)
 
@@ -512,13 +543,20 @@ class GraphManipulator:
    def getGraphsByNode(self,node_labels:list) -> dict:
       """Returns a list of graphs that contain a list of node labels."""
       graphs = {}
+      
+      if not node_labels:
+         raise self.NoNodeLabelsSupplied(f"No node labels were given.")
+      
+      graph_ids= []
+      
       for key in self.Graphs.keys():
          node_ids = self.Graphs[key].has_labels(node_labels)
          if node_ids:
             graphs[key]=node_ids
+            graph_ids.append(key)
       
       if graphs:
-         return graphs
+         return graphs,graph_ids
 
       raise self.GraphsNotFound(f"No graphs with labels matching {str(node_labels)} were found.")
 
@@ -531,9 +569,9 @@ class GraphManipulator:
       return {
          "id" : str(graph_id),
          "connected" : str(self.is_connected(graph)), 
-         "acylic" : str(self.is_cyclic(graph)), 
-         "longest_directed_path" : str(self.longest_path(graph)),
-         "longest_undirected_path" : str(self.longest_path(graph,directed=False))}
+         "acyclic" : str(self.is_cyclic(graph)), 
+         "longest_directed_path" : (self.longest_path(graph)),
+         "longest_undirected_path" : (self.longest_path(graph,directed=False))}
       
    def checkSubgraph(self,json_subgraph:dict) -> dict:
       """Function to find all graphs that contain a specified subgraph pattern.
@@ -547,6 +585,9 @@ class GraphManipulator:
          if edge_list:
             graph_dict[graph_id] = edge_list
       
+      if not graph_dict:
+         raise self.GraphNotFoundError("No graphs found with matching subgraph.")
+
       return graph_dict
 
    def is_cyclic(self, graph:Graph) -> bool:

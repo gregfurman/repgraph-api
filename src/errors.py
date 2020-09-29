@@ -14,13 +14,26 @@ custom_errors = {
       "message" : "JSON data has failed to parse correctly.",
       "error" : "Bad request.", 
       "status" : 400
-   }, 
+   }, "IncorrectFileType" : {
+      "message" : "You must upload a valid file type.",
+      "status" : 400
+   },
+   "EmptyFileUploaded" : {
+      "message" : "Uploaded file is empty.",
+      "status" : 400
+   },
 
 }
 
 
 
-class InternalServerError(Exception):
+class InternalServerError(HTTPException):
+   pass
+
+class IncorrectFileType(HTTPException):
+   pass
+
+class EmptyFileUploaded(HTTPException):
    pass
 
 class GraphError(Exception):
@@ -29,6 +42,9 @@ class GraphError(Exception):
 
    def __str__(self):
       return self.error_msg
+
+class GraphIdNotInteger(GraphError):
+   pass
 
 class GraphAlreadyExists(GraphError):
    pass
@@ -45,15 +61,20 @@ class GraphComparisonError(GraphError):
 class NodeNotFoundError(GraphError):
    pass
 
+class NoNodeLabelsSupplied(GraphError):
+   pass
+
+class PageOutOfBounds(GraphError):
+   pass
+
 class GraphsNotFound(GraphError):
    pass
 
 class UrlNotFound(Exception):
    pass
 
-class JsonParseError(Exception):
+class JsonParseError(HTTPException):
    pass
 
-class NoDataLoaded(Exception):
-   pass
+
 
