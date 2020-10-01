@@ -10,6 +10,8 @@ graphs = GraphManipulator()
 ALLOWED_EXTENSIONS = {"dmrs","txt"}
 
 class LoadGraphs(Resource):
+   """Flask-RESTful Resource that allows a user to upload graphs. """
+
    def __init__(self):
       self.reqparse = reqparse.RequestParser()
       self.reqparse.add_argument('graphs',type=ds.FileStorage,location="files")
@@ -67,6 +69,8 @@ class LoadGraphs(Resource):
       return {"status" : 400, "error" : "Bad Request", "message" : f"Expected {counter} but found {len(graphs)} unique graphs.", "error_logs" : "\n".join(errors) },400
          
 class NodeNeighbours(Resource):
+   """Flask-RESTful Resource that allows a user to get a node's neigbours.
+   Neighbours are defined by incoming and outgoing edges."""
 
    def get(self,graph_id,node_id):
       
@@ -82,8 +86,9 @@ class NodeNeighbours(Resource):
       except Exception as e:
          raise InternalServerError
    
-
 class GraphComparison(Resource):
+   """Flask-RESTful Resource that allows a user to compare 2 graphs for similarities and differences.
+   The graphs are specified by their graph ids. """
 
    def get(self,graph_id_1,graph_id_2):
 
@@ -101,6 +106,8 @@ class GraphComparison(Resource):
          raise InternalServerError
 
 class GraphsBySubgraph(Resource):
+   """Flask-RESTful Resource that allows a user to get a list of graph objects that contain a subgraph. """
+
    def get(self):
 
       try:
@@ -117,6 +124,8 @@ class GraphsBySubgraph(Resource):
          raise JsonParseError
       
 class GraphProperties(Resource):
+   """Flask-RESTful Resource that allows a user to get a graphs properties based on its ID. """
+
    def get(self,graph_id):
       
       try:
@@ -130,6 +139,8 @@ class GraphProperties(Resource):
          raise InternalServerError
          
 class GraphsByNodes(Resource):
+   """Flask-RESTful Resource that allows a user to get a list of graph objects that contain a list of node labels. """
+
    def get(self):
       result =  {}
 
@@ -148,31 +159,34 @@ class GraphsByNodes(Resource):
          return {"message" : str(e), "status" : 400},400
       except:
          raise JsonParseError
-
-      
+    
 class GraphsById(Resource):
- def get(self):
+   """Flask-RESTful Resource that allows a user to get a list of graph objects based on a list of graph_ids. """
 
-   result = {}
+   def get(self):
 
-   try:
-      args = request.get_json(force=True)
-      graph_list = graphs.getGraphs(args["graph_id_list"])
+      result = {}
 
-      result["output"] = graph_list[0]
-      result["graph_ids"] = graph_list[1]
-      if len(graph_list):
-         result["error_logs"] = graph_list[2]
-      result["status"] = 200
-      result["message"] = "Returned all graph ids present in graph collection."
-      return result,result["status"] 
+      try:
+         args = request.get_json(force=True)
+         graph_list = graphs.getGraphs(args["graph_id_list"])
 
-   except GraphNotFoundError as e:
-      return {"message" : str(e), "status" : 404},404
-   except Exception:
-      raise JsonParseError
+         result["output"] = graph_list[0]
+         result["graph_ids"] = graph_list[1]
+         if len(graph_list):
+            result["error_logs"] = graph_list[2]
+         result["status"] = 200
+         result["message"] = "Returned all graph ids present in graph collection."
+         return result,result["status"] 
+
+      except GraphNotFoundError as e:
+         return {"message" : str(e), "status" : 404},404
+      except Exception:
+         raise JsonParseError
 
 class GraphsByPage(Resource):
+   """Flask-RESTful Resource that allows a user to get a list of graphs based on pagination principles. """
+
    def get(self,page_no):
       
       try:
@@ -189,10 +203,12 @@ class GraphCount(Resource):
       return {"count":len(graphs)}
 
 class GraphRD(Resource):
+   """Flask-RESTful Resource that allows a user to get or delete a graph based on a graph_id """
+
    def get(self,graph_id):
       try:
          graph = graphs.getGraph(graph_id)
-         return {"status": 200, "message": f"Graph {graph_id} has been returned.", "output":str(graph.as_dict())}
+         return {"status": 200, "message": f"Graph {graph_id} has been returned.", "output":(graph.as_dict())}
       except GraphNotFoundError as e:
          return {"status" : 404, "message" : str(e)}, 404
       except GraphIdNotInteger as e:

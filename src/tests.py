@@ -48,7 +48,7 @@ class TestUpload(TestAPI):
    def test_count_all_valid(self):
       self.upload_file("wsj00a.dmrs")
       result = self.app.get("graph_count").get_json()
-      self.assertEqual(result["count"],441,msg="Expected 441 graph to be present.")
+      self.assertEqual(result["count"],441,msg="Expected 441 graphs to be present.")
 
    def test_upload_invalid_fileType(self):
       response_as_dict = self.post_graphs(filename="wsj00a.invalid")
@@ -123,6 +123,15 @@ class TestNodeNeighbours(TestAPI):
       self.assertEqual(response_as_dict["status"],expected["status"])
       self.assertEqual(response_as_dict["incoming"],expected["incoming"])
       self.assertEqual(response_as_dict["outgoing"],expected["outgoing"])
+
+   def test_node_no_neighbours(self):
+      """Testing if disconnected acyclic graph's properties are identified and returned. """
+      self.upload_file("properties.dmrs")
+      response = self.app.get("display_node_neighbours/20013015_2")
+      response_as_dict = json.loads(response.get_data(as_text=True))
+      self.assertEqual(response_as_dict["status"],200)
+      self.assertCountEqual(response_as_dict["incoming"],[])
+      self.assertCountEqual(response_as_dict["outgoing"],[])
 
 class TestGraphComparison(TestAPI):
 

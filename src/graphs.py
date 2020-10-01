@@ -471,14 +471,6 @@ class GraphManipulator:
 
 
       return graphs,list(graphs.keys()),error_logs
-      
-
-      # graph_id_list = set([graph_id for graph_id in graph_id_list])
-      # matching = graph_id_list & self.Graphs.keys()
-      # if matching:
-      #    return {graph_id: self.Graphs[graph_id].as_dict() for graph_id in matching},matching
-
-      # return {}
 
    def getGraphsByPage(self, page_no:int,graphs_per_page=5) -> dict:
       """Function to determine which graphs are to be displayed per page."""
