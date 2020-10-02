@@ -21,7 +21,15 @@ custom_errors = {
    "EmptyFileUploaded" : {
       "message" : "Uploaded file is empty.",
       "status" : 400
+   }, "GraphAlreadyExists"  : {
+      "message" : "Graph id {graph_id} already exists but is being overwritten."
+   }, 
+   "GraphParseError" : {
+      "message" : "Line {line} column {col} of file failed to be parsed succsessfully and is likely malformed."
    },
+   "GraphIdNotInteger" :{
+      "message" : "graph_id '{graph_id}' is not numeric."
+   }
 
 }
 
@@ -44,15 +52,22 @@ class GraphError(Exception):
       return self.error_msg
 
 class GraphIdNotInteger(GraphError):
+   def __init__(self,graph_id:int):
+      super().__init__(custom_errors['GraphIdNotInteger']["message"].format(graph_id=graph_id))
    pass
 
 class GraphAlreadyExists(GraphError):
+   def __init__(self,graph_id):
+      super().__init__(custom_errors['GraphAlreadyExists']["message"].format(graph_id=graph_id))
    pass
 
 class GraphNotFoundError(GraphError):
    pass
 
 class GraphParseError(GraphError):
+   from json import decoder
+   def __init__(self,decoder: decoder.JSONDecodeError ):
+      super().__init__(custom_errors['GraphParseError']["message"].format(line=decoder.lineno,col=decoder.colno))
    pass
 
 class GraphComparisonError(GraphError):

@@ -56,11 +56,10 @@ class LoadGraphs(Resource):
       counter = 0
       for graph in args['graphs']:
          counter += 1
-         try:
-            (graphs.addGraph(json.loads(graph)))
-         except GraphAlreadyExists as e:
-            errors.append(str(e))
-         except (GraphParseError,Exception) as e:
+         
+         try:  
+            graphs.addGraph(graph)
+         except (GraphIdNotInteger,GraphAlreadyExists,GraphParseError) as e:
             errors.append(str(e))
 
       if not(errors):

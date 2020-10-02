@@ -152,7 +152,7 @@ class Token:
 
 class Graph:
    from collections import deque
-   from errors import GraphParseError, NodeNotFoundError
+   from errors import GraphParseError, NodeNotFoundError, GraphIdNotInteger
    """
    A Graph object keeps a list of all the Nodes, Edges, Tokens, the original sentence being parsed and a single variable for a top node.
    There are multiple functions within the Graph class that allow for checking formal graph properties and longest directional & non-directional paths. 
@@ -180,9 +180,12 @@ class Graph:
       graph_input : dict
          The graph represented by DMRS in json format. 
       """
-
       self.sentence = graph_input['input']
-      self.id = int(graph_input['id'])
+      try:
+         self.id = int(graph_input['id'])
+      except ValueError as e:
+         raise self.GraphIdNotInteger(graph_input['id'])
+
       self.tokens = {token['index']: Token(token_input=token) for token in graph_input['tokens']}
       self.nodes = {node['id']: Node(node_input=node,tokens=self.tokens) for node in graph_input['nodes']}
       self.edges = {f"{self.nodes[edge['source']].label}-{edge['label']}/{edge['post-label']}-{self.nodes[edge['target']].label}":   Edge(self.nodes[edge['source']],self.nodes[edge['target']],edge['label'],edge['post-label']) for edge in graph_input['edges']}
@@ -408,7 +411,7 @@ class GraphManipulator:
    The GraphManipulator class serves as a controller for the all graphs loaded via the API.
    """
    from errors import GraphNotFoundError,NodeNotFoundError, GraphComparisonError, GraphParseError, GraphAlreadyExists, GraphsNotFound,GraphIdNotInteger,NoNodeLabelsSupplied
-
+   import json
    def __init__(self):
       self.Graphs = {}
 
@@ -416,19 +419,24 @@ class GraphManipulator:
       """Creates a clear dictionary for graph objects."""
       self.Graphs = {}
 
-   def addGraph(self,graph_input:dict) -> dict:
+   def addGraph(self,graph) -> dict:
       """Adds a graph to the GraphManipulators Graph dictionary."""
-
-      graph_id = int(graph_input['id'])
-
-      if graph_id in self.Graphs:
-         raise self.GraphAlreadyExists(f"Graph id {graph_id} already exists and cannot be overwritten.")
-      try:
-         self.Graphs[graph_id] = Graph(graph_input)
-      except:
-         raise self.GraphParseError(f"Graph id {graph_id} failed to be parsed succsessfully and is likely malformed.")
       
-      return self.Graphs[graph_id].id
+      try:
+         graph_input = self.json.loads(graph)
+      except ValueError as e:
+         raise self.GraphParseError(e) 
+
+      graph = Graph(graph_input)      
+      
+      graph_id = graph.id
+      exists = graph_id in self.Graphs
+      self.Graphs[graph_id] = graph
+
+      
+      if exists:
+         raise self.GraphAlreadyExists(graph_id)
+
 
 
    def getGraph(self,graph_id:int) -> Graph:
@@ -438,7 +446,7 @@ class GraphManipulator:
          if graph_id.isnumeric():
             graph_id = int(graph_id)
          else:
-            raise self.GraphIdNotInteger(f"graph_id {graph_id} is not numeric.")
+            raise self.GraphIdNotInteger(graph_id)
 
       graph = self.Graphs.get(graph_id,None)
       if graph is not None:

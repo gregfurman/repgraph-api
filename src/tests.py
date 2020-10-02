@@ -36,33 +36,41 @@ class TestAPI(unittest.TestCase):
 class TestUpload(TestAPI):
 
    def test_count_empty(self):
+      """ Attempting to count the amount of graphs uploaded with an empty file. """
       self.upload_file("empty.dmrs")
       result = self.app.get("graph_count").get_json()
       self.assertEqual(result["count"],0,msg="Expected 0 graphs to be present.")
    
    def test_count_1_valid(self):
+      """ Attempting to count the amount of graphs uploaded with a file containing a single entry. """
+
       self.upload_file("test_one_entry.dmrs")
       result = self.app.get("graph_count").get_json()
       self.assertEqual(result["count"],1,msg="Expected 1 graph to be present.")
 
    def test_count_all_valid(self):
+      """ Attempting to count the amount of graphs uploaded with a file containing 441 graphs. """
       self.upload_file("wsj00a.dmrs")
       result = self.app.get("graph_count").get_json()
       self.assertEqual(result["count"],441,msg="Expected 441 graphs to be present.")
 
    def test_upload_invalid_fileType(self):
+      """ Attempting to upload an invalid filetype. """
       response_as_dict = self.post_graphs(filename="wsj00a.invalid")
       self.assertDictEqual(response_as_dict,errors.custom_errors["IncorrectFileType"])
 
    def test_upload_empty_file(self):
+      """ Attempting to upload an empty file. """
       response_as_dict = self.post_graphs(filename="empty.dmrs")
       self.assertDictEqual(response_as_dict,errors.custom_errors["EmptyFileUploaded"])
 
    def test_upload_valid(self):
+      """ Attempting to upload a valid file with no malformed graphs. """
       response_as_dict = self.post_graphs()
       self.assertEqual(response_as_dict["status"],200)
 
    def test_upload_malformed_data(self):
+      """ Attempting to upload a valid filetype with malformed graphs (conflicting IDS or broken strucutre). """
       response_as_dict = self.post_graphs(filename="malformed.dmrs")
       self.assertEqual(response_as_dict["status"],400)
 
