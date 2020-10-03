@@ -82,7 +82,7 @@ class NodeNeighbours(Resource):
          return result,result["status"] 
       except (GraphNotFoundError,NodeNotFoundError) as e:
          return {"message" : str(e) ,"status":404},404
-      except Exception as e:
+      except:
          raise InternalServerError
    
 class GraphComparison(Resource):

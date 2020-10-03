@@ -108,7 +108,7 @@ class TestNodeNeighbours(TestAPI):
       response_as_dict = json.loads(response.get_data(as_text=True))
       self.assertEqual(response_as_dict["status"],404)
 
-   def test_node_neighbour_graph_not_exist(self):
+   def test_node_neighbour_node_not_exist(self):
       """Attempts to get a node's neighbours in a graph where the node does not exist. """
       self.upload_file()
       response = self.app.get("display_node_neighbours/20034007_5")

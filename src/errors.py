@@ -29,7 +29,14 @@ custom_errors = {
    },
    "GraphIdNotInteger" :{
       "message" : "graph_id '{graph_id}' is not numeric."
-   }
+   },
+   "NodeNotFoundError" :{
+      "message" : "node_id {node_id} of graph '{graph_id}' was not found."
+   },
+   "EdgeAddError" :{
+      "message" : "Failed to add edge {edge}."
+   },
+
 
 }
 
@@ -74,7 +81,15 @@ class GraphComparisonError(GraphError):
    pass
 
 class NodeNotFoundError(GraphError):
+   def __init__(self,node_id,graph_id):
+      super().__init__(custom_errors['NodeNotFoundError']["message"].format(node_id=node_id,graph_id=graph_id))
    pass
+
+class EdgeAddError(GraphError):
+   def __init__(self,edge):
+      super().__init__(custom_errors['EdgeAddError']["message"].format(edge=str(edge)))
+   pass
+
 
 class NoNodeLabelsSupplied(GraphError):
    pass
