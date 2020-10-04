@@ -82,7 +82,7 @@ class Node:
 
       return [edge.get_trg().id for edge in self.outgoingEdges]
 
-   def add_edge(self,edge:Edge):
+   def add_edge(self,edge):
       """Adds an Edge object to a nodes incoming or outgoing edges list.
       
       :param edge: The Edge object that is being added to an incoming or outgoing edge list.

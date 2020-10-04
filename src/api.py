@@ -18,6 +18,10 @@ class LoadGraphs(Resource):
       super(LoadGraphs, self).__init__()
 
    def invalid_file_type(self,file):
+      
+      if file is None:
+         raise IncorrectFileType
+
       filename=file.filename
       if not('.' in filename and \
          filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS):
@@ -38,7 +42,7 @@ class LoadGraphs(Resource):
          raise EmptyFileUploaded
    
    def file_validity(self,file):
-
+      
       try:
          self.invalid_file_type(file)
          self.file_empty_check(file)
