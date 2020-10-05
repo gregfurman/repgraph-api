@@ -105,8 +105,9 @@ class Edge:
    def __init__(self,node_src,node_trg,label,post_label,add_edge=True):
       self.node_source = node_src
       self.node_target = node_trg
-      self.label = label
+      self.pre_label = label
       self.post_label = post_label
+      self.label = f"{label}/{post_label}"
 
       if add_edge:
          node_src.add_edge(self)
@@ -122,7 +123,10 @@ class Edge:
       return self.node_source
 
    def as_dict(self) -> dict:
-      """Function that returns an edge's labels and target & source nodes in dictionary format."""
+      """Function that returns an edge's labels and target & source nodes in dictionary format.
+      :returns: an edge object represented as a dictionary.
+      :rtype: dict:
+      """
       edge_dict = {}
 
       if self.node_source:
@@ -131,18 +135,18 @@ class Edge:
       if self.node_target:
          edge_dict["trg"] = self.node_target.id
 
-      edge_dict["label"] = f"{self.label}/{ self.post_label}" 
+      edge_dict["label"] = self.label 
 
       return edge_dict
 
    def __repr__(self):
-      return f"src: {self.node_source.label} -{self.label}/{self.post_label}-> trg: {self.node_target.label}"
+      return f"src: {self.node_source.label} -{self.label}-> trg: {self.node_target.label}"
 
    def __str__(self):
-      return f"src: {self.node_source.label} -{self.label}/{self.post_label}-> trg: {self.node_target.label}"
+      return f"src: {self.node_source.label} -{self.label}-> trg: {self.node_target.label}"
 
    def __eq__(self,other):
-      return self.node_target.label == other.node_target.label and self.node_source.label == other.node_source.label and (f"{self.label}/{self.post_label}"==f"{other.label}/{other.post_label}")
+      return self.node_target.label == other.node_target.label and self.node_source.label == other.node_source.label and self.label == other.label
 
 class Token:
    """
@@ -453,17 +457,25 @@ class Graph:
       :returns: dictionary of matching connections if the subgraph exists else an empty dictionary is returned.
       :rtype: dict
       """
-      edges = []
+      from fnmatch import fnmatch
 
+      edges = []
+      subgraph_edges =[]
       for node_src in subgraph.keys():
          for args in subgraph[node_src]:
-            key = f"{node_src}-{args[1].upper()}/{args[2].upper()}-{args[0]}"
-            if key in self.edges.keys():
-               edges.append(self.edges[key].as_dict())
+            subgraph_edges.append(f"{node_src}-{args[1].upper()}/{args[2].upper()}-{args[0]}")
+            
+      edge_dict = {key: [] for key in subgraph_edges}
 
-
-      if len(edges) > 0:
-         return {"links" :edges}
+      for pattern in edge_dict:
+         for edge in self.edges:
+            if fnmatch(edge,pattern):
+               edge_dict[pattern].append(edge)
+      
+      if  len([len(edges) for edges in edge_dict.values() if edges]) == len(subgraph_edges):
+         
+         edges = [item for sublist in edge_dict.values() for item in sublist]
+         return {"links" : [self.edges[edge].as_dict() for edge in edges]}
 
       return {}
 
@@ -478,6 +490,24 @@ class Graph:
       node = self.nodes[node_id]
       return node.get_neighbours(True) + node.get_neighbours(False)
 
+   def merge_edge_labels(self) -> dict:
+      """
+      :returns: dictionary of edge labels where 2 nodes having 'n' connections are represented as having a label = '[label_1] || [label_2] || ... || [label_n]'
+      :rtype: dict
+      """
+      edges_dict = {}
+      
+      for edge in self.edges.values():
+         key = f"{edge.get_src().label}-{edge.get_trg().label}"
+
+         if key not in edges_dict:
+            edges_dict[key] = edge.as_dict()
+         else:
+            edges_dict[key]['label'] += f" || { edge.as_dict()['label']}"
+
+      return list(edges_dict.values())
+
+
    def as_dict(self) -> dict:
       """Function that returns a Graph object in dictionary format. Created with the intention of sending modified graph objects to the front-end that are easier to present using the javascript D3 library.
       
@@ -490,7 +520,7 @@ class Graph:
       graph_dict["id"] = str(self.id)
       graph_dict["a_nodes"] = {str(node): self.nodes[node].as_dict() for node in self.nodes if not(self.nodes[node].is_surface())}
       graph_dict["s_nodes"] = {str(node): self.nodes[node].as_dict() for node in self.nodes if self.nodes[node].is_surface()}
-      graph_dict["edges"] = [edge.as_dict() for edge in self.edges.values()]
+      graph_dict["edges"] = self.merge_edge_labels()
       graph_dict["tokens"] = {str(token): self.tokens[token].as_dict() for token in self.tokens.keys()}
       graph_dict["tops"] = {str(self.top.id) : self.top.as_dict()}
       graph_dict["sentence"] = [token.form for token in self.tokens.values()]
@@ -747,6 +777,7 @@ class GraphManipulator:
       
       if not graph_dict:
          raise self.GraphNotFoundError("No graphs found with matching subgraph.")
+
 
       return graph_dict
 
