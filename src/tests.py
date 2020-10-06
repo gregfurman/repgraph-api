@@ -127,19 +127,24 @@ class TestNodeNeighbours(TestAPI):
       self.upload_file()
       response = self.app.get("display_node_neighbours/20013011_2")
       response_as_dict = json.loads(response.get_data(as_text=True))
-      expected = {"incoming" : [], "outgoing" : [0,4], "status" : 200}
-      self.assertEqual(response_as_dict["status"],expected["status"])
-      self.assertEqual(response_as_dict["incoming"],expected["incoming"])
-      self.assertEqual(response_as_dict["outgoing"],expected["outgoing"])
+      expected = json.loads('{"edges":[{"src":2,"trg":0,"label":"ARG1/NEQ"},{"src":2,"trg":4,"label":"ARG2/NEQ"}],"a_nodes":{"0":{"label":"generic_entity","anchors":[0]}},"s_nodes":{"4":{"label":"_attention_n_to","anchors":[2]}},"tokens":{"0":{"form":"\u201cthat","lemma":"that"},"2":{"form":"attention","lemma":"attention"}}}')
+      self.assertEqual(response_as_dict["edges"],expected["edges"])
+      self.assertEqual(response_as_dict["a_nodes"],expected["a_nodes"])
+      self.assertEqual(response_as_dict["s_nodes"],expected["s_nodes"])
+      self.assertEqual(response_as_dict["tokens"],expected["tokens"])
+
 
    def test_node_no_neighbours(self):
-      """Testing if disconnected acyclic graph's properties are identified and returned. """
+      """Testignt if node with no neighbours is checked for adjacent nodes. """
       self.upload_file("properties.dmrs")
       response = self.app.get("display_node_neighbours/20013015_2")
       response_as_dict = json.loads(response.get_data(as_text=True))
-      self.assertEqual(response_as_dict["status"],200)
-      self.assertCountEqual(response_as_dict["incoming"],[])
-      self.assertCountEqual(response_as_dict["outgoing"],[])
+      self.assertCountEqual(response_as_dict["s_nodes"],{})
+      self.assertCountEqual(response_as_dict["a_nodes"],{})
+      self.assertCountEqual(response_as_dict["edges"],[])
+      self.assertCountEqual(response_as_dict["tokens"],{})
+
+
 
 class TestGraphComparison(TestAPI):
 

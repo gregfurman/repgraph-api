@@ -37,16 +37,24 @@ class Node:
       """
       return self.label[0] == "_"
 
-   def as_dict(self) -> dict:
+   def as_dict(self,include_neighbours=True) -> dict:
       """Returns a node as a dictionary object.
       
+      :param include_neighbours: boolean to include a node's incoming and outgoing neighbours in the resulting dictionary (default is True).
+      :type include_neighbours: bool
       :returns: node in dictionary format with a 'label' key, a list of incoming and outgoing connections to nodes by id, as well as a list of token id's with which the node is anchored.
       :rtype: dict
       """
-      return {"label" : self.label, 
-      "incoming" : [(edge.get_src().id) for edge in self.incomingEdges], 
-      "outgoing" : [(edge.get_trg().id) for edge in self.outgoingEdges], 
+
+      result = {"label" : self.label, 
       "anchors" : list(self.anchors.keys())}
+
+      if include_neighbours:
+         result["incoming"] = [(edge.get_src().id) for edge in self.incomingEdges]
+         result["outgoing"] = [(edge.get_trg().id) for edge in self.outgoingEdges]
+
+      
+      return result
 
 
    def __str__(self):
@@ -76,12 +84,26 @@ class Node:
       :rtype: list or dict
       """
       if as_json:
-         return {"incoming":[edge.get_src().id for edge in self.incomingEdges], "outgoing" :[edge.get_trg().id for edge in self.outgoingEdges]}
+         subgraph = {}
+         subgraph['edges'] = {edge.get_label():edge for edge in self.incomingEdges}
+         subgraph['edges'].update({edge.get_label(): edge for edge in self.outgoingEdges})
+
+         nodes = {edge.get_src().id: edge.get_src() for edge in self.incomingEdges}
+         nodes.update({edge.get_trg().id: edge.get_trg() for edge in self.outgoingEdges}) 
+         subgraph['a_nodes'] = {str(node): nodes[node].as_dict(False) for node in nodes if not(nodes[node].is_surface())}
+         subgraph['s_nodes'] = {str(node): nodes[node].as_dict(False) for node in nodes if (nodes[node].is_surface())}
+
+         subgraph['tokens'] = {key for x in [list(edge.get_src().anchors.keys()) for edge in self.incomingEdges]+[list(edge.get_trg().anchors.keys()) for edge in self.outgoingEdges] for key in x}
+         subgraph['tops'] = str(self.id)
+         
+         return subgraph
 
       if incoming:
          return [edge.get_src().id for edge in self.incomingEdges]
 
       return [edge.get_trg().id for edge in self.outgoingEdges]
+
+
 
    def add_edge(self,edge):
       """Adds an Edge object to a nodes incoming or outgoing edges list.
@@ -122,6 +144,9 @@ class Edge:
    def get_src(self) -> Node:
       """:returns: An edge's source node."""
       return self.node_source
+
+   def get_label(self):
+      return f"{self.node_source.label}-{self.label}-{self.node_target.label}"
 
    def as_dict(self) -> dict:
       """Function that returns an edge's labels and target & source nodes in dictionary format.
@@ -490,14 +515,14 @@ class Graph:
       node = self.nodes[node_id]
       return node.get_neighbours(True) + node.get_neighbours(False)
 
-   def merge_edge_labels(self) -> dict:
+   def merge_edge_labels(self,edges) -> dict:
       """
       :returns: dictionary of edge labels where 2 nodes having 'n' connections are represented as having a label = '[label_1] || [label_2] || ... || [label_n]'
       :rtype: dict
       """
       edges_dict = {}
       
-      for edge in self.edges.values():
+      for edge in edges.values():
          key = f"{edge.get_src().label}-{edge.get_trg().label}"
 
          if key not in edges_dict:
@@ -506,6 +531,12 @@ class Graph:
             edges_dict[key]['label'] += f" || { edge.as_dict()['label']}"
 
       return list(edges_dict.values())
+
+
+   def from_subgraph(self,subgraph:dict):
+
+      subgraph["edges"] = self.merge_edge_labels(edges=subgraph["edges"])
+      subgraph["tokens"] = {key: self.tokens[key].as_dict() for key in self.tokens.keys() & subgraph["tokens"]}
 
 
    def as_dict(self) -> dict:
@@ -520,7 +551,7 @@ class Graph:
       graph_dict["id"] = str(self.id)
       graph_dict["a_nodes"] = {str(node): self.nodes[node].as_dict() for node in self.nodes if not(self.nodes[node].is_surface())}
       graph_dict["s_nodes"] = {str(node): self.nodes[node].as_dict() for node in self.nodes if self.nodes[node].is_surface()}
-      graph_dict["edges"] = self.merge_edge_labels()
+      graph_dict["edges"] = self.merge_edge_labels(self.edges)
       graph_dict["tokens"] = {str(token): self.tokens[token].as_dict() for token in self.tokens.keys()}
       graph_dict["tops"] = {str(self.top.id) : self.top.as_dict()}
       graph_dict["sentence"] = [token.form for token in self.tokens.values()]
@@ -707,7 +738,10 @@ class GraphManipulator:
       if node is None:
          raise NodeNotFoundError(node_id,graph_id)
 
-      return node.get_neighbours(as_json=True)
+      subgraph = node.get_neighbours(as_json=True)
+      graph.from_subgraph(subgraph)
+
+      return subgraph
 
 
    def getGraphsByNode(self,node_labels):
