@@ -9,8 +9,8 @@ custom_errors = {
       "InternalServerError" : {
       "message" : "Something went wrong and a resource could not be returned.",
       "status" : 500
-
-   }, "JsonParseError" : {
+   },
+    "JsonParseError" : {
       "message" : "JSON data has failed to parse correctly.",
       "error" : "Bad request.", 
       "status" : 400
@@ -35,6 +35,12 @@ custom_errors = {
    },
    "EdgeAddError" :{
       "message" : "Failed to add edge {edge}."
+   },
+   "PageOutOfBounds" :{
+      "message" : "The page you requested is out of bounds. Valid pages range from [1-{total_pages}] whereas you requested {page_no}."
+   },
+   "GraphsNotFound" :{
+      "message" : "No graphs with {valueType} matching {value} were found."
    },
 
 
@@ -68,7 +74,9 @@ class GraphAlreadyExists(GraphError):
       super().__init__(custom_errors['GraphAlreadyExists']["message"].format(graph_id=graph_id))
    pass
 
-class GraphNotFoundError(GraphError):
+class PageOutOfBounds(GraphError):
+   def __init__(self,page_no:int,total_pages:int):
+      super().__init__(custom_errors[(str(self.__class__.__name__))]["message"].format(page_no=page_no,total_pages=total_pages))
    pass
 
 class GraphParseError(GraphError):
@@ -94,11 +102,12 @@ class EdgeAddError(GraphError):
 class NoNodeLabelsSupplied(GraphError):
    pass
 
-class PageOutOfBounds(GraphError):
-   pass
 
 class GraphsNotFound(GraphError):
-   pass
+   def __init__(self,value,valueType):
+      super().__init__(custom_errors[str(self.__class__.__name__)]["message"].format(value=value,valueType=valueType))
+
+
 
 class UrlNotFound(Exception):
    pass

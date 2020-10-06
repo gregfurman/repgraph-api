@@ -1,3 +1,5 @@
+from errors import *
+
 class Node:
    """The Node class holds a node's id, label, a list of incoming and outgoing Edge objects and a list of Token objects with which it is anchored to. 
    
@@ -7,7 +9,6 @@ class Node:
    :param tokens: A dictionary of a tokens that a node is anchored to (default is None).
    :type tokens: dict
    """
-   from errors import EdgeAddError
 
    def __init__(self,node_input,tokens=None):
       self.id = node_input['id']
@@ -94,7 +95,7 @@ class Node:
       elif(self.id == edge.node_target.id):
          self.incomingEdges.append(edge)
       else:
-         raise self.EdgeAddError("Error adding edges") #error message or try catch
+         raise self.EdgeAddError() #error message or try catch
       
 class Edge:
 
@@ -201,14 +202,13 @@ class Graph:
    """
 
    from collections import deque
-   from errors import GraphIdNotInteger
 
    def __init__(self,graph_input):
       self.sentence = graph_input['input']
       try:
          self.id = int(graph_input['id'])
       except ValueError as e:
-         raise self.GraphIdNotInteger(graph_input['id'])
+         raise GraphIdNotInteger(graph_input['id'])
 
       self.tokens = {token['index']: Token(token_input=token) for token in graph_input['tokens']}
       self.nodes = {node['id']: Node(node_input=node,tokens=self.tokens) for node in graph_input['nodes']}
@@ -533,7 +533,6 @@ class GraphManipulator:
    :var Graphs: a dictionary created with the intention to store graph objects.
    :type Graphs: dict 
    """
-   from errors import GraphNotFoundError,NodeNotFoundError, GraphComparisonError, GraphParseError, GraphAlreadyExists, GraphsNotFound,GraphIdNotInteger,NoNodeLabelsSupplied
    import json
    def __init__(self):
       self.Graphs = {}
@@ -543,6 +542,7 @@ class GraphManipulator:
       self.Graphs = {}
 
    def addGraph(self,graph):
+      import sys
       """Adds a graph to the GraphManipulators Graph dictionary.
       
       :param graph: JSON data in byte form that will be parsed to Graph format.
@@ -553,8 +553,9 @@ class GraphManipulator:
       
       try:
          graph_input = self.json.loads(graph)
-      except ValueError as e:
-         raise self.GraphParseError(e) 
+      except (ValueError) as e:
+         raise GraphParseError(e) 
+
 
       graph = Graph(graph_input)      
       
@@ -564,7 +565,7 @@ class GraphManipulator:
 
       
       if exists:
-         raise self.GraphAlreadyExists(graph_id)
+         raise GraphAlreadyExists(graph_id)
 
 
 
@@ -576,20 +577,20 @@ class GraphManipulator:
       :returns: A graph object that corresponds to the user specified graph_id.
       :rtype: Graph
       :raises GraphIdNotInteger: if the id of the graph is not in integer or numeric format.
-      :raises GraphNotFoundError: if the id of the graph is not found.
+      :raises GraphsNotFound: if the id of the graph is not found.
       """
       
       if not isinstance(graph_id, int):
          if graph_id.isnumeric():
             graph_id = int(graph_id)
          else:
-            raise self.GraphIdNotInteger(graph_id)
+            raise GraphIdNotInteger(graph_id)
 
       graph = self.Graphs.get(graph_id,None)
       if graph is not None:
          return graph
 
-      raise self.GraphNotFoundError(f"graph_id {graph_id} does not exist.") 
+      raise GraphsNotFound(value=graph_id,valueType="a graph_id") 
 
    def delGraph(self,graph_id):
       """Function to delete a graph specified by graph_id. Returns a boolean indicating success."""
@@ -606,7 +607,7 @@ class GraphManipulator:
       :type graph_id_list: list 
       :returns: A tuple consisting of three lists: a list of Graph objects, a list of those Graph object keys, and a list of error logs.
       :rtype: tuple
-      :raises GraphNotFoundError: if no graphs are found to match any input ids.
+      :raises GraphsNotFound: if no graphs are found to match any input ids.
       """
       
       graphs = {}
@@ -614,12 +615,12 @@ class GraphManipulator:
       for graph_id in graph_id_list:
          try:
             graphs[str(graph_id)] = self.getGraph(graph_id).as_dict()
-         except (self.GraphIdNotInteger,self.GraphNotFoundError) as e:
+         except (GraphIdNotInteger,GraphsNotFound) as e:
             error_logs.append(str(e))
 
 
       if not graphs:
-         raise self.GraphNotFoundError("None of the listed graph ids were found.")
+         raise GraphsNotFound(value=str(graph_id_list),valueType="graph_ids")
 
 
       return graphs,list(graphs.keys()),error_logs
@@ -632,20 +633,18 @@ class GraphManipulator:
       :param graphs_per_page: The amount of graphs to be returned per page (default is 5).
       :type graphs_per_page: int
       :raises TypeError: If the specified page_no is not in int format.
+      :raises PageOutofBounds: If the specified page_no is out of bounds.
       :returns: dictionary of a list of graph objects returned, list of the graph objects ids, the amount of graphs returned and a nested dictionary of total graphs and pages remaining.
       :rtype: dict
       """
-      
+
       if not isinstance(page_no,int):
          raise TypeError
 
-      if page_no < 1:
-         page_no=1
-      else:
-         total_pages = len(self.Graphs) // graphs_per_page + (1 if len(self.Graphs) % graphs_per_page else 0)
+      total_pages = len(self.Graphs) // graphs_per_page + (1 if len(self.Graphs) % graphs_per_page else 0)
 
-         if page_no > total_pages:
-            page_no = total_pages
+      if page_no < 1 or page_no > total_pages:
+         raise PageOutOfBounds(page_no,total_pages)
 
       sorted_keys = list(self.Graphs.keys())
       sorted_keys.sort()
@@ -686,7 +685,7 @@ class GraphManipulator:
       result = graph_1.compare(graph_2)
 
       if not(result):
-         raise self.GraphComparisonError(f"Attempting to compare graphs with differing sentences.")
+         raise GraphComparisonError(f"Attempting to compare graphs with differing sentences.")
 
       return result
 
@@ -706,7 +705,7 @@ class GraphManipulator:
       node = graph.getNode(node_id)
 
       if node is None:
-         raise self.NodeNotFoundError(node_id,graph_id)
+         raise NodeNotFoundError(node_id,graph_id)
 
       return node.get_neighbours(as_json=True)
 
@@ -724,7 +723,7 @@ class GraphManipulator:
       graphs = {}
       
       if not node_labels:
-         raise self.NoNodeLabelsSupplied(f"No node labels were given.")
+         raise NoNodeLabelsSupplied(f"No node labels were given.")
       
       graph_ids= []
       
@@ -737,7 +736,7 @@ class GraphManipulator:
       if graphs:
          return graphs,graph_ids
 
-      raise self.GraphsNotFound(f"No graphs with labels matching {str(node_labels)} were found.")
+      raise GraphsNotFound(value=str(node_labels),valueType="node labels")
 
 
    def checkProperties(self, graph_id):
@@ -763,7 +762,7 @@ class GraphManipulator:
       
       :param json_subgraph: A json object containing the subgraph to be searched for.
       :type json_subgraph: json
-      :raises GraphNotFoundError: 
+      :raises GraphsNotFound: if no graphs are found to match the input subgraph.
       :returns: A dictionary of edge lists with a graph's id as the key is returned.
       :rtype: dict
       """
@@ -776,7 +775,7 @@ class GraphManipulator:
             graph_dict[graph_id] = edge_list
       
       if not graph_dict:
-         raise self.GraphNotFoundError("No graphs found with matching subgraph.")
+         raise GraphsNotFound(valueType="connections",value="the input subgraph")
 
 
       return graph_dict

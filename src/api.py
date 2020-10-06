@@ -1,5 +1,5 @@
 import base64
-from errors import *
+import errors
 from flask_restful import Resource, reqparse
 from flask import request, jsonify, session, make_response
 from graphs import GraphManipulator
@@ -20,12 +20,12 @@ class LoadGraphs(Resource):
    def invalid_file_type(self,file):
       
       if file is None:
-         raise IncorrectFileType
+         raise errors.IncorrectFileType
 
       filename=file.filename
       if not('.' in filename and \
          filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS):
-            raise IncorrectFileType
+            raise errors.IncorrectFileType
       
    def file_empty_check(self,graph_data):
       
@@ -39,14 +39,14 @@ class LoadGraphs(Resource):
          pass
 
       if size == 0:
-         raise EmptyFileUploaded
+         raise errors.EmptyFileUploaded
    
    def file_validity(self,file):
       
       try:
          self.invalid_file_type(file)
          self.file_empty_check(file)
-      except (EmptyFileUploaded, IncorrectFileType) as e:
+      except (errors.EmptyFileUploaded, errors.IncorrectFileType) as e:
          raise e
 
 
@@ -56,21 +56,23 @@ class LoadGraphs(Resource):
 
       self.file_validity(args['graphs'])
 
-      errors = []
-      counter = 0
+      warnings = []
       for graph in args['graphs']:
-         counter += 1
          
          try:  
             graphs.addGraph(graph)
-         except (GraphIdNotInteger,GraphAlreadyExists,GraphParseError) as e:
-            errors.append(str(e))
+         except (errors.GraphIdNotInteger,errors.GraphAlreadyExists,errors.GraphParseError) as e:
+            warnings.append(str(e))
 
-      if not(errors):
-         return {"status" : 200, "message" : f"Successfully uploaded all {len(graphs)} graphs."}
-
-      return {"status" : 400, "error" : "Bad Request", "message" : f"Expected {counter} but found {len(graphs)} unique graphs.", "error_logs" : "\n".join(errors) },400
+      if len(graphs) > 0:
+         response = {"status" : 200, "message" : f"Successfully uploaded all {len(graphs)} graphs."}
+         if warnings:
+            response['warnings'] = warnings #"\n".join(errors)
+      else:
+         response = {"status" : 400, "error" : "Bad Request", "message" : f"No graphs were uploaded.", "error_logs" : "\n".join(warnings) }
          
+      return response, response['status']
+
 class NodeNeighbours(Resource):
    """Flask-RESTful Resource that allows a user to get a node's neigbours.
    Neighbours are defined by incoming and outgoing edges."""
@@ -84,10 +86,10 @@ class NodeNeighbours(Resource):
          result["status"] = 200
          result["message"] = f"The neighbours of node {node_id} in graph {graph_id} have been successfully returned."
          return result,result["status"] 
-      except (GraphNotFoundError,NodeNotFoundError) as e:
+      except (errors.GraphsNotFound,errors.NodeNotFoundError) as e:
          return {"message" : str(e) ,"status":404},404
       except:
-         raise InternalServerError
+         raise errors.InternalServerError
    
 class GraphComparison(Resource):
    """Flask-RESTful Resource that allows a user to compare 2 graphs for similarities and differences.
@@ -101,12 +103,12 @@ class GraphComparison(Resource):
          result["message"] = "Differences and similarities have been successfully returned."
          return result,result["status"]             
          
-      except GraphNotFoundError as e:
+      except errors.GraphsNotFound as e:
          return {"message" :str(e) ,"status" : 404},404
-      except (GraphIdNotInteger,GraphComparisonError) as e:
+      except (errors.GraphIdNotInteger,errors.GraphComparisonError) as e:
          return {"status" : 400, "message" : str(e)}, 400
       except Exception as e:
-         raise InternalServerError
+         raise errors.InternalServerError
 
 class GraphsBySubgraph(Resource):
    """Flask-RESTful Resource that allows a user to get a list of graph objects that contain a subgraph. """
@@ -121,10 +123,10 @@ class GraphsBySubgraph(Resource):
          result['status'] = 200
          result['message'] = "Graphs that contain the input subset have been successfully returned."
          return result 
-      except GraphNotFoundError as e:
+      except errors.GraphsNotFound as e:
          return {"message" : str(e), "status" : 404},404
       except:
-         raise JsonParseError
+         raise errors.JsonParseError
       
 class GraphProperties(Resource):
    """Flask-RESTful Resource that allows a user to get a graphs properties based on its ID. """
@@ -136,10 +138,10 @@ class GraphProperties(Resource):
          result['status'] = 200
          result['message'] = f"Successfully found the properties of Graph {graph_id}."
          return result
-      except GraphNotFoundError as e:
+      except errors.GraphsNotFound as e:
          return {'status' : 404, 'message' : str(e)},404
       except Exception as e:
-         raise InternalServerError
+         raise errors.InternalServerError
          
 class GraphsByNodes(Resource):
    """Flask-RESTful Resource that allows a user to get a list of graph objects that contain a list of node labels. """
@@ -156,12 +158,12 @@ class GraphsByNodes(Resource):
          result["status"] = 200
          return result,result["status"]
 
-      except GraphsNotFound as e:
+      except errors.GraphsNotFound as e:
          return {"message" : str(e), "status" : 404},404
-      except NoNodeLabelsSupplied as e:
+      except errors.NoNodeLabelsSupplied as e:
          return {"message" : str(e), "status" : 400},400
       except:
-         raise JsonParseError
+         raise errors.JsonParseError
     
 class GraphsById(Resource):
    """Flask-RESTful Resource that allows a user to get a list of graph objects based on a list of graph_ids. """
@@ -176,16 +178,16 @@ class GraphsById(Resource):
 
          result["output"] = graph_list[0]
          result["graph_ids"] = graph_list[1]
-         if len(graph_list):
+         if len(graph_list) > 2:
             result["error_logs"] = graph_list[2]
          result["status"] = 200
          result["message"] = "Returned all graph ids present in graph collection."
          return result,result["status"] 
 
-      except GraphNotFoundError as e:
+      except errors.GraphsNotFound as e:
          return {"message" : str(e), "status" : 404},404
       except Exception:
-         raise JsonParseError
+         raise errors.JsonParseError
 
 class GraphsByPage(Resource):
    """Flask-RESTful Resource that allows a user to get a list of graphs based on pagination principles. """
@@ -196,10 +198,10 @@ class GraphsByPage(Resource):
          result = graphs.getGraphsByPage(page_no)
          result["status"] = 200
          return result,result["status"] 
-      except PageOutOfBounds as e:         
-         return {"message" : str(e), "status":200},200
-      except (HTTPException,Exception, TypeError) as e:
-         raise InternalServerError
+      except errors.PageOutOfBounds as e:         
+         return {"message" : str(e), "status":404},404
+      except (errors.HTTPException,Exception, TypeError) as e:
+         raise errors.InternalServerError
       
 class GraphCount(Resource):
    def get(self):
@@ -212,12 +214,12 @@ class GraphRD(Resource):
       try:
          graph = graphs.getGraph(graph_id)
          return {"status": 200, "message": f"Graph {graph_id} has been returned.", "output":(graph.as_dict())}
-      except GraphNotFoundError as e:
+      except errors.GraphsNotFound as e:
          return {"status" : 404, "message" : str(e)}, 404
-      except GraphIdNotInteger as e:
+      except errors.GraphIdNotInteger as e:
          return {"status" : 400, "message" : str(e)}, 400
-      except HTTPException as e:
-         raise InternalServerError
+      except errors.HTTPException as e:
+         raise errors.InternalServerError
 
    def delete(self,graph_id):
       if graphs.delGraph(graph_id):

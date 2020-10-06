@@ -72,7 +72,7 @@ class TestUpload(TestAPI):
    def test_upload_malformed_data(self):
       """ Attempting to upload a valid filetype with malformed graphs (conflicting IDS or broken strucutre). """
       response_as_dict = self.post_graphs(filename="malformed.dmrs")
-      self.assertEqual(response_as_dict["status"],400)
+      self.assertEqual(len(response_as_dict["warnings"]),3)
 
 class TestRead(TestAPI):
 
@@ -337,7 +337,7 @@ class TestPagination(TestAPI):
       self.upload_file()
       response = self.app.get("get_graphs/0")
       response_as_dict = json.loads(response.get_data(as_text=True))
-      self.assertEqual(response_as_dict["page_no"],1)
+      self.assertEqual(response_as_dict["status"],404)
 
    def test_invalid_page_upper(self):
       """ 
@@ -346,7 +346,7 @@ class TestPagination(TestAPI):
       self.upload_file()
       response = self.app.get("get_graphs/90")
       response_as_dict = json.loads(response.get_data(as_text=True))
-      self.assertEqual(response_as_dict["page_no"],89)
+      self.assertEqual(response_as_dict["status"],404)
 
    def test_one_entry_dataset(self):
       """ 
