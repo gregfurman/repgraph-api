@@ -82,7 +82,7 @@ class NodeNeighbours(Resource):
       result = {}
       
       try:
-         result = graphs.getNodeNeighbours(graph_id,node_id)
+         result["output"] = {graph_id : graphs.getNodeNeighbours(graph_id,node_id)}
          result["status"] = 200
          result["message"] = f"The neighbours of node {node_id} in graph {graph_id} have been successfully returned."
          return result,result["status"] 
