@@ -88,7 +88,8 @@ class Node:
          subgraph['edges'] = {edge.get_label():edge for edge in self.incomingEdges}
          subgraph['edges'].update({edge.get_label(): edge for edge in self.outgoingEdges})
 
-         nodes = {edge.get_src().id: edge.get_src() for edge in self.incomingEdges}
+         nodes = {self.id: self}
+         nodes.update({edge.get_src().id: edge.get_src() for edge in self.incomingEdges})
          nodes.update({edge.get_trg().id: edge.get_trg() for edge in self.outgoingEdges}) 
          subgraph['a_nodes'] = {str(node): nodes[node].as_dict(False) for node in nodes if not(nodes[node].is_surface())}
          subgraph['s_nodes'] = {str(node): nodes[node].as_dict(False) for node in nodes if (nodes[node].is_surface())}
