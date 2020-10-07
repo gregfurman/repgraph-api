@@ -56,6 +56,16 @@ class Node:
       
       return result
 
+   def get_neighbour_by_node(self,node_id,directed=True):
+      """Returns an edge by node id. 
+      
+      """
+      if directed:
+         result= [edge for edge in self.outgoingEdges if edge.get_trg().id==node_id]
+      else:
+         result= [edge for edge in self.outgoingEdges+self.incomingEdges if edge.get_trg().id==node_id or edge.get_src().id==node_id]
+
+      return result.pop()
 
    def __str__(self):
       return f"ID: {self.id}\nLabel: {self.label}\nIncoming edges: {self.incomingEdges}\nOutgoing Edges: {self.outgoingEdges}\nAnchored: {list(self.anchors.values())}"
@@ -428,6 +438,11 @@ class Graph:
          
       return paths
 
+   def path_to_graph(self,node_ids,directed=True):
+      nodes = {str(node): self.nodes[node].as_dict(False) for node in node_ids}
+      edges = [self.nodes[node_ids[i]].get_neighbour_by_node(node_ids[i+1],directed=directed).as_dict() for i in range(len(node_ids)-1)]
+      
+      return {"path" : str(node_ids),"edges" : edges, "nodes" : nodes}
 
    def findLongestPath(self,directed=True,connected=True) -> dict:
       """Function to calculate and return the longest directed or undirected path in connected or non-connected graph.
@@ -443,7 +458,9 @@ class Graph:
       max_len   = max(len(p) for p in paths)
       max_paths = [p for p in paths if len(p) == max_len]
 
-      return {"max_paths":max_paths,"length":max_len}
+      return [self.path_to_graph(list(path),directed=directed) for path in paths]
+      
+
 
    def findAllPaths(self,directed=True,connected=True) -> list:
       """Function to find all paths in the graph. 
@@ -837,7 +854,10 @@ class GraphManipulator:
       :rtype: dict
       
       """
-      return graph.findLongestPath(directed=directed,connected=graph.connected)
+
+      result = graph.findLongestPath(directed=directed,connected=graph.connected)
+
+      return result
 
    def is_connected(self,graph):
       """Function to determine whether a given graph, specified by 'graph', is connected.

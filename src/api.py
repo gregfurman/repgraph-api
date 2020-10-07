@@ -134,7 +134,8 @@ class GraphProperties(Resource):
    def get(self,graph_id):
       
       try:
-         result = graphs.checkProperties(graph_id)
+         result = {}
+         result["output"] = graphs.checkProperties(graph_id)
          result['status'] = 200
          result['message'] = f"Successfully found the properties of Graph {graph_id}."
          return result
