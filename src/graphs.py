@@ -134,12 +134,27 @@ class Edge:
    """
    The Edge class is a directional connection between 2 nodes, having a node source (node_src) and node target (node target). 
    Each Edge also has a label and post-label.
+   
+   :var node_source: The source node from which an edge originates.
+   :type node_source: Node
+   :var node_target: The target node that is connected from the source node via an edge.
+   :type node_target: Node
+   :var label: An edge relationship consisting of a label and a post-label (in the format '[label]/[post-label]').
+   :type label: Node
+   :param node_src: The input source node.
+   :type node_src: Node
+   :param node_trg: The input target node.
+   :type node_trg: Node
+   :param label: The input edge label.
+   :type label: str
+   :param post_label: The input edge post_label.
+   :type post_label: str
+   :param add_edge: determines whether an edge will be added to a node's incoming or outgoing edge list (default is True).
+   :type add_edge: bool
    """
    def __init__(self,node_src,node_trg,label,post_label,add_edge=True):
       self.node_source = node_src
       self.node_target = node_trg
-      self.pre_label = label
-      self.post_label = post_label
       self.label = f"{label}/{post_label}"
 
       if add_edge:
@@ -185,8 +200,16 @@ class Edge:
       return self.node_target.label == other.node_target.label and self.node_source.label == other.node_source.label and self.label == other.label
 
 class Token:
-   """
-   A Token object has an index, form, lemma and an optional carg.
+   """A Token object has an index, form, lemma and an optional carg.
+
+   :var index: The index of the token.
+   :type index: int
+   :var form: The original representation of a word.
+   :type form: str
+   :var lemma: The normalised form of a word.
+   :type lemma: str
+   :var carg: for named entities i.e numbers, abbreviations, proper nouns.
+   :type carg: int
    """
    def __init__(self,token_input):
       self.index = token_input['index']
@@ -559,7 +582,12 @@ class Graph:
 
 
    def from_subgraph(self,subgraph:dict):
+      """Adds in all nodes tokens for subgraph and merges edge labels where a node A has 2 or more connections to a node B.
+      
+      :param subgraph: dictionary of subgraph.
+      :type subgraph: dict
 
+      """
       subgraph["edges"] = self.merge_edge_labels(edges=subgraph["edges"])
       subgraph["tokens"] = {key: self.tokens[key].as_dict() for key in self.tokens.keys() & subgraph["tokens"]}
 
