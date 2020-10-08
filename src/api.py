@@ -4,6 +4,7 @@ from flask_restful import Resource, reqparse
 from flask import request, jsonify, session, make_response
 from graphs import GraphManipulator
 from werkzeug import datastructures as ds
+
 import json
 
 graphs = GraphManipulator()
@@ -98,7 +99,8 @@ class GraphComparison(Resource):
    def get(self,graph_id_1,graph_id_2):
 
       try:
-         result = graphs.compare(graph_id_1,graph_id_2)
+         result = {}
+         result["output"] = graphs.compare(graph_id_1,graph_id_2)
          result["status"] = 200
          result["message"] = "Differences and similarities have been successfully returned."
          return result,result["status"]             
@@ -107,13 +109,14 @@ class GraphComparison(Resource):
          return {"message" :str(e) ,"status" : 404},404
       except (errors.GraphIdNotInteger,errors.GraphComparisonError) as e:
          return {"status" : 400, "message" : str(e)}, 400
-      except Exception as e:
-         raise errors.InternalServerError
+      # except Exception as e:
+      #    raise errors.InternalServerError
 
 class GraphsBySubgraph(Resource):
    """Flask-RESTful Resource that allows a user to get a list of graph objects that contain a subgraph. """
 
-   def get(self):
+
+   def post(self):
 
       try:
          subgraph = request.get_json(force=True)
@@ -147,12 +150,12 @@ class GraphProperties(Resource):
 class GraphsByNodes(Resource):
    """Flask-RESTful Resource that allows a user to get a list of graph objects that contain a list of node labels. """
 
-   def get(self):
+   def get(self,label):
       result =  {}
 
       try:
-         args = request.get_json(force=True)
-         graph_list = graphs.getGraphsByNode(args["node_labels"])
+         # args = request.get_json(force=True)
+         graph_list = graphs.getGraphsByNode([label])
          result["output"] = graph_list[0]
          result["graph_ids"] = graph_list[1]
          result["message"] = "Successfully returned graphs"

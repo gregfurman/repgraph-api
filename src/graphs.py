@@ -52,7 +52,6 @@ class Node:
       if include_neighbours:
          result["incoming"] = [(edge.get_src().id) for edge in self.incomingEdges]
          result["outgoing"] = [(edge.get_trg().id) for edge in self.outgoingEdges]
-
       
       return result
 
@@ -278,12 +277,20 @@ class Graph:
       matching_edges = self.edges.keys() & other.edges.keys()
       different_edges = self.edges.keys() ^ other.edges.keys()
 
-      result["matching"] = list(matching_edges)
+      result["matching"] = self.edge_list_to_graph(list(matching_edges))
       
-      result["graph_1"] = list(self.edges.keys() & different_edges)
-      result["graph_2"] = list(other.edges.keys() & different_edges)
+      result["graph_1"] = {str(self.id) : self.edge_list_to_graph(list(self.edges.keys() & different_edges))}
+      result["graph_2"] = {str(other.id) : other.edge_list_to_graph(list(other.edges.keys() & different_edges))}
 
       return result
+
+   def edge_list_to_graph(self,edge_keys):
+
+      edges = [self.edges[edge].as_dict() for edge in edge_keys]
+      nodes = {str(self.edges[key].get_src().id): self.edges[key].get_src().as_dict(False) for key in edge_keys}
+      nodes.update({str(self.edges[key].get_trg().id): self.edges[key].get_trg().as_dict(False) for key in edge_keys})
+      
+      return {"edges" : edges, "nodes":nodes}
 
 
    def display(self):
@@ -433,7 +440,7 @@ class Graph:
       for t in neighbours:
          if t not in visited:
                t_path = path + [t]
-               paths.append(tuple(t_path))
+               paths.append((t_path))
                paths.extend(self.DFS(t,directed, visited[:], t_path))
          
       return paths
@@ -442,7 +449,7 @@ class Graph:
       nodes = {str(node): self.nodes[node].as_dict(False) for node in node_ids}
       edges = [self.nodes[node_ids[i]].get_neighbour_by_node(node_ids[i+1],directed=directed).as_dict() for i in range(len(node_ids)-1)]
       
-      return {"path" : str(node_ids),"edges" : edges, "nodes" : nodes}
+      return {"edges" : edges, "nodes" : nodes}
 
    def findLongestPath(self,directed=True,connected=True) -> dict:
       """Function to calculate and return the longest directed or undirected path in connected or non-connected graph.
@@ -458,7 +465,7 @@ class Graph:
       max_len   = max(len(p) for p in paths)
       max_paths = [p for p in paths if len(p) == max_len]
 
-      return [self.path_to_graph(list(path),directed=directed) for path in paths]
+      return {str(path): self.path_to_graph(list(path),directed=directed) for path in max_paths}
       
 
 

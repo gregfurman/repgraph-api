@@ -145,8 +145,6 @@ class TestNodeNeighbours(TestAPI):
       self.assertCountEqual(response_as_dict["edges"],[])
       self.assertCountEqual(response_as_dict["tokens"],{})
 
-
-
 class TestGraphComparison(TestAPI):
 
    def test_comparison_graph_not_exist(self):
@@ -184,10 +182,9 @@ class TestGraphComparison(TestAPI):
       """
       self.upload_file()
       response = self.app.get("compare/20013011_20013011")
-      response_as_dict = json.loads(response.get_data(as_text=True))
-      
-      self.assertListEqual(response_as_dict['graph_1'],[])
-      self.assertListEqual(response_as_dict['graph_2'],[])
+      response_as_dict = json.loads(response.get_data(as_text=True))['output']
+      self.assertDictEqual(response_as_dict['graph_1'],{"20013011" : {"edges":[],"nodes":{}}})
+      self.assertDictEqual(response_as_dict['graph_2'],{"20013011" : {"edges":[],"nodes":{}}})
 
    def test_comparison_valid(self):
       """
@@ -196,11 +193,12 @@ class TestGraphComparison(TestAPI):
       """
       self.upload_file("duplicate.dmrs")
       response = self.app.get("compare/20010002_20010004")
-      response_as_dict = json.loads(response.get_data(as_text=True))
-
-      self.assertCountEqual(response_as_dict['matching'],['neg-ARG1/H-loc_nonsp', 'neg-MOD/EQ-unknown', '_this_q_dem-RSTR/H-_year_n_1'])
-      self.assertCountEqual(response_as_dict['graph_1'],['loc_nonsp-ARG2/NEQ-_year_n_1', 'loc_nonsp-ARG1/NEQ-unknown'])
-      self.assertCountEqual(response_as_dict['graph_2'],['loc_nonsp-ARG2/EQ-_year_n_1', 'loc_nonsp-ARG1/EQ-unknown'])
+      response_as_dict = json.loads(response.get_data(as_text=True))["output"]
+      expected_resp = {'matching':{'edges':[{'src':1,'trg':2,'label':'RSTR/H'},{'src':0,'trg':3,'label':'ARG1/H'},{'src':0,'trg':4,'label':'MOD/EQ'}],'nodes':{'1':{'label':'_this_q_dem','anchors':[1]},'0':{'label':'neg','anchors':[0]},'2':{'label':'_year_n_1','anchors':[2]},'3':{'label':'loc_nonsp','anchors':[1,2]},'4':{'label':'unknown','anchors':[0,1,2]}}},'graph_1':{'20010002':{'edges':[{'src':3,'trg':4,'label':'ARG1/NEQ'},{'src':3,'trg':2,'label':'ARG2/NEQ'}],'nodes':{'3':{'label':'loc_nonsp','anchors':[1,2]},'4':{'label':'unknown','anchors':[0,1,2]},'2':{'label':'_year_n_1','anchors':[2]}}}},'graph_2':{'20010004':{'edges':[{'src':3,'trg':2,'label':'ARG2/EQ'},{'src':3,'trg':4,'label':'ARG1/EQ'}],'nodes':{'3':{'label':'loc_nonsp','anchors':[1,2]},'2':{'label':'_year_n_1','anchors':[2]},'4':{'label':'unknown','anchors':[0,1,2]}}}}}
+      # self.assertDictEqual(response_as_dict,expected_resp)
+      self.assertCountEqual(response_as_dict['matching'],expected_resp['matching'])
+      self.assertCountEqual(response_as_dict['graph_1'],expected_resp['graph_1'])
+      self.assertCountEqual(response_as_dict['graph_2'],expected_resp['graph_2'])
 
 class TestGraphNodes(TestAPI):
 
@@ -209,26 +207,25 @@ class TestGraphNodes(TestAPI):
       Testing node label search with no labels.
       """
       self.upload_file()
-      response = self.app.get("node_search",data='{"node_labels" : []}',content_type="application/json")
+      response = self.app.get("node_search/''")
       response_as_dict = json.loads(response.get_data(as_text=True))
-
-      self.assertEqual(response_as_dict["status"],400)
+      self.assertEqual(response_as_dict["status"],404)
 
    def test_search_crash(self):
       """ 
       Testing node label search's ability to prevent a crash.
       """
       self.upload_file()
-      response = self.app.get("node_search",data='{"node_labels" : "["fail"]"}',content_type="application/json")
+      response = self.app.get("node_search/'fail'")
       response_as_dict = json.loads(response.get_data(as_text=True))
-      self.assertEqual(response_as_dict["status"],400)
+      self.assertEqual(response_as_dict["status"],404)
 
    def test_search_fail(self):
       """ 
       Testing node label search with a label that does not exist within the data.
       """
       self.upload_file()
-      response = self.app.get("node_search",data='{"node_labels" : ["fail"]}',content_type="application/json")
+      response = self.app.get("node_search/'fail'")
       response_as_dict = json.loads(response.get_data(as_text=True))
       self.assertEqual(response_as_dict["status"],404)
 
@@ -238,7 +235,7 @@ class TestGraphNodes(TestAPI):
       Testing node label search's ability to prevent a crash.
       """
       self.upload_file()
-      response = self.app.get("node_search",data='{"node_labels" : "[1,2,3]"}',content_type="application/json")
+      response = self.app.get("node_search/1")
       response_as_dict = json.loads(response.get_data(as_text=True))
       self.assertEqual(response_as_dict["status"],404)
 
@@ -247,7 +244,7 @@ class TestGraphNodes(TestAPI):
       Testing node label search with a single label where some have label.
       """
       self.upload_file("label_test.dmrs")
-      response = self.app.get("node_search",data='{"node_labels" :["udef_q"] }',content_type="application/json")
+      response = self.app.get("node_search/udef_q")
       response_as_dict = json.loads(response.get_data(as_text=True))
       graph_ids = set([20003013,20001002])
       self.assertEqual(response_as_dict["output"].keys() & graph_ids,set())
@@ -258,27 +255,27 @@ class TestGraphNodes(TestAPI):
       returned in a list.
       """
       self.upload_file("label_test.dmrs")
-      response = self.app.get("node_search",data='{"node_labels" :["udef_q"] }',content_type="application/json")
+      response = self.app.get("node_search/udef_q")
       response_as_dict = json.loads(response.get_data(as_text=True))
       graph_ids = set([20003013,20001002])
       self.assertEqual(response_as_dict["output"].keys() & graph_ids & set(response_as_dict["graph_ids"]),set())
          
-   def test_search_pass_singe_all(self):
+   def test_search_pass_1(self):
       """ 
       Testing node label search where all graphs have label.
       """
       self.upload_file("label_test.dmrs")
-      response = self.app.get("node_search",data='{"node_labels" :["proper_q"] }',content_type="application/json")
+      response = self.app.get("node_search/proper_q")
       response_as_dict = json.loads(response.get_data(as_text=True))
       graph_ids = set([20001001,20001002,20003001,20003002,20003003,20003004,20003005,20003008,20003009,20003010,20003011,20003012,20003013,20003007])
       self.assertEqual(response_as_dict["output"].keys() & graph_ids,set())
 
-   def test_search_pass_singe_all(self):
+   def test_search_pass_2(self):
       """ 
       Testing node label search where some graphs have 1 or more labels.
       """
       self.upload_file("label_test.dmrs")
-      response = self.app.get("node_search",data='{"node_labels" :["_inc_n_1","generic_entity"] }',content_type="application/json")
+      response = self.app.get("node_search/_inc_n_1")
       response_as_dict = json.loads(response.get_data(as_text=True))
       graph_ids = set([20003013,20003003])
       self.assertEqual(response_as_dict["output"].keys() & graph_ids,set())
@@ -290,32 +287,32 @@ class TestGraphProperties(TestAPI):
       self.upload_file("properties.dmrs")
       response = self.app.get("graph_properties/20013011")
       response_as_dict = json.loads(response.get_data(as_text=True))
-      self.assertTrue(eval(response_as_dict["connected"]))
-      self.assertTrue(eval(response_as_dict["acyclic"]))
+      self.assertTrue(eval(response_as_dict["output"]["connected"]))
+      self.assertTrue(eval(response_as_dict["output"]["acyclic"]))
 
    def test_connected_cyclic(self):
       """Testing if connected cyclic graph's properties are identified and returned. """
       self.upload_file("properties.dmrs")
       response = self.app.get("graph_properties/20013012")
       response_as_dict = json.loads(response.get_data(as_text=True))
-      self.assertTrue(eval(response_as_dict["connected"]))
-      self.assertFalse(eval(response_as_dict["acyclic"]))
+      self.assertTrue(eval(response_as_dict["output"]["connected"]))
+      self.assertFalse(eval(response_as_dict["output"]["acyclic"]))
 
    def test_disconnected_acyclic(self):
       """Testing if disconnected acyclic graph's properties are identified and returned. """
       self.upload_file("properties.dmrs")
       response = self.app.get("graph_properties/20013013")
       response_as_dict = json.loads(response.get_data(as_text=True))
-      self.assertFalse(eval(response_as_dict["connected"]))
-      self.assertTrue(eval(response_as_dict["acyclic"]))
+      self.assertFalse(eval(response_as_dict["output"]["connected"]))
+      self.assertTrue(eval(response_as_dict["output"]["acyclic"]))
 
    def test_disconnected_cyclic(self):
       """Testing if disconnected cyclic graph's properties are identified and returned. """
       self.upload_file("properties.dmrs")
       response = self.app.get("graph_properties/20013014")
       response_as_dict = json.loads(response.get_data(as_text=True))
-      self.assertFalse(eval(response_as_dict["connected"]))
-      self.assertFalse(eval(response_as_dict["acyclic"]))
+      self.assertFalse(eval(response_as_dict["output"]["connected"]))
+      self.assertFalse(eval(response_as_dict["output"]["acyclic"]))
 
    def test_longest_paths(self):
       """
@@ -325,14 +322,13 @@ class TestGraphProperties(TestAPI):
       response = self.app.get("graph_properties/20011002")
       response_as_dict = json.loads(response.get_data(as_text=True))
 
-      longest_directed_paths = response_as_dict["longest_directed_path"]
-      longest_undirected_paths = response_as_dict["longest_undirected_path"]
+      longest_directed_paths = response_as_dict["output"]["longest_directed_path"]
+      longest_undirected_paths = response_as_dict["output"]["longest_undirected_path"]
+      longest_directed_expected =  ['[47, 30, 33, 32]', '[47, 30, 33, 46]'] 
+      longest_undirected_expected = ['[0, 1, 13, 47, 30, 32, 33, 46, 40, 36, 38, 35, 34]', '[0, 1, 13, 47, 30, 32, 33, 46, 44, 43, 45, 41, 42]']
 
-      longest_directed_expected =  [[47, 30, 33, 32], [47, 30, 33, 46]] 
-      longest_undirected_expected = [[0, 1, 13, 47, 30, 32, 33, 46, 40, 36, 38, 35, 34], [0, 1, 13, 47, 30, 32, 33, 46, 44, 43, 45, 41, 42]]
-
-      self.assertCountEqual(longest_directed_paths["max_paths"],longest_directed_expected)
-      self.assertCountEqual(longest_undirected_paths["max_paths"],longest_undirected_expected)
+      self.assertCountEqual((list(longest_directed_paths.keys())),(longest_directed_expected))
+      self.assertCountEqual((list(longest_undirected_paths.keys())),(longest_undirected_expected))
 
 class TestPagination(TestAPI):
 
@@ -433,7 +429,7 @@ class TestSubgraphSearch(TestAPI):
       Testing a subgraph being searched for and succeeding with 1 match.
       """
       self.upload_file()
-      response = self.app.get("search_subgraph",data='{   "_account_v_for" : [["_fund_n_1","Arg1","NEQ"]],   "_now_a_1" : [["_account_v_for","Arg1","EQ"]],   "_these_q_dem" : [["_fund_n_1","RSTR","H"]]}',content_type="application/json")
+      response = self.app.post("search_subgraph",data='{ "_account_v_for" : [["_fund_n_1","Arg1","NEQ"]],   "_now_a_1" : [["_account_v_for","Arg1","EQ"]],   "_these_q_dem" : [["_fund_n_1","RSTR","H"]]}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
       self.assertCountEqual(response_as_dict["graph_ids"],[20034012])
 
@@ -442,7 +438,7 @@ class TestSubgraphSearch(TestAPI):
       Testing subgraph pattern to match all graphs and succeeding.
       """
       self.upload_file()
-      response = self.app.get("search_subgraph",data='{"*" : [["*","*","*"]]}',content_type="application/json")
+      response = self.app.post("search_subgraph",data='{"*" : [["*","*","*"]]}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
       self.assertEqual(len(response_as_dict["graph_ids"]),441)
 
@@ -451,7 +447,7 @@ class TestSubgraphSearch(TestAPI):
       Testing subgraph pattern to match all graphs and succeeding.
       """
       self.upload_file()
-      response = self.app.get("search_subgraph",data='{"*" : [["*","Arg2","*"]],"_now_a_1" : [["_account_v_for","Arg1","EQ"]],"_these_q_dem" : [["_fund_n_1","RSTR","H"]]}',content_type="application/json")
+      response = self.app.post("search_subgraph",data='{"*" : [["*","Arg2","*"]],"_now_a_1" : [["_account_v_for","Arg1","EQ"]],"_these_q_dem" : [["_fund_n_1","RSTR","H"]]}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
       self.assertEqual(len(response_as_dict["graph_ids"]),1)
 
@@ -460,7 +456,7 @@ class TestSubgraphSearch(TestAPI):
       Testing a subgraph being searched for and succeeding.
       """
       self.upload_file()
-      response = self.app.get("search_subgraph",data='{"xxxx" : [["xxxx","xxx","xxx"]]}',content_type="application/json")
+      response = self.app.post("search_subgraph",data='{"xxxx" : [["xxxx","xxx","xxx"]]}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
       self.assertEqual(response_as_dict["status"],404)
 
