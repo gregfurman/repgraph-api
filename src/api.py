@@ -109,8 +109,8 @@ class GraphComparison(Resource):
          return {"message" :str(e) ,"status" : 404},404
       except (errors.GraphIdNotInteger,errors.GraphComparisonError) as e:
          return {"status" : 400, "message" : str(e)}, 400
-      # except Exception as e:
-      #    raise errors.InternalServerError
+      except Exception as e:
+         raise errors.InternalServerError
 
 class GraphsBySubgraph(Resource):
    """Flask-RESTful Resource that allows a user to get a list of graph objects that contain a subgraph. """
@@ -121,7 +121,7 @@ class GraphsBySubgraph(Resource):
       try:
          subgraph = request.get_json(force=True)
          result = {}
-         result["output"] = graphs.checkSubgraph(subgraph)
+         result["output"] = graphs.checkSubgraph(subgraph["links"])
          result["graph_ids"] = list(result["output"].keys())
          result['status'] = 200
          result['message'] = "Graphs that contain the input subset have been successfully returned."

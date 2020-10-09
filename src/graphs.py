@@ -157,6 +157,9 @@ class Edge:
       self.node_target = node_trg
       self.label = f"{label}/{post_label}"
 
+      self.pre_label = label
+      self.post_label = post_label
+
       if add_edge:
          node_src.add_edge(self)
          node_trg.add_edge(self)
@@ -270,7 +273,7 @@ class Graph:
 
       self.tokens = {token['index']: Token(token_input=token) for token in graph_input['tokens']}
       self.nodes = {node['id']: Node(node_input=node,tokens=self.tokens) for node in graph_input['nodes']}
-      self.edges = {f"{self.nodes[edge['source']].label}-{edge['label']}/{edge['post-label']}-{self.nodes[edge['target']].label}":   Edge(self.nodes[edge['source']],self.nodes[edge['target']],edge['label'],edge['post-label']) for edge in graph_input['edges']}
+      self.edges = {f"{self.nodes[edge['source']].label}-{edge['label']}/{edge['post-label']}-{self.nodes[edge['target']].label}":   Edge(self.nodes[edge['source']],self.nodes[edge['target']],edge['label'],edge['post-label']) for edge in graph_input['edges']}      
       self.top = self.nodes[graph_input['tops'][0]]
 
       self.connected = None
@@ -308,7 +311,7 @@ class Graph:
       return result
 
    def edge_list_to_graph(self,edge_keys):
-
+      """Converts a list of edge keys to a dictonary of edges and nodes. """
       edges = [self.edges[edge].as_dict() for edge in edge_keys]
       nodes = {str(self.edges[key].get_src().id): self.edges[key].get_src().as_dict(False) for key in edge_keys}
       nodes.update({str(self.edges[key].get_trg().id): self.edges[key].get_trg().as_dict(False) for key in edge_keys})
@@ -522,35 +525,38 @@ class Graph:
       return paths
 
 
-   def subgraph_search(self,subgraph:dict) -> dict:
+   def subgraph_search(self,subgraph:list) -> dict:
       """Returns all edges that a subgraph shares with a graph.
       
       :param subgraph: The subgraph that will be searched for within the graph.
-      :type subgraph: dict
+      :type subgraph: list
       :returns: dictionary of matching connections if the subgraph exists else an empty dictionary is returned.
       :rtype: dict
       """
-      from fnmatch import fnmatch
+      import re
 
-      edges = []
-      subgraph_edges =[]
-      for node_src in subgraph.keys():
-         for args in subgraph[node_src]:
-            subgraph_edges.append(f"{node_src}-{args[1].upper()}/{args[2].upper()}-{args[0]}")
-            
-      edge_dict = {key: [] for key in subgraph_edges}
+      wildcard_edges = []
+      subgraph_edges = set()
 
-      for pattern in edge_dict:
-         for edge in self.edges:
-            if fnmatch(edge,pattern):
-               edge_dict[pattern].append(edge)
+      for link in subgraph:
       
-      if  len([len(edges) for edges in edge_dict.values() if edges]) == len(subgraph_edges):
-         
-         edges = [item for sublist in edge_dict.values() for item in sublist]
-         return {"links" : [self.edges[edge].as_dict() for edge in edges]}
+         link[1]= link[1].upper()
+         link[2]= link[2].upper()
 
-      return {}
+         if "*" in link:
+            wildcard_edges.append([e for e in link if "*" not in e])
+         else:
+            subgraph_edges.add("%s-%s/%s-%s" % tuple(link))
+
+      matches = self.edges.keys() & subgraph_edges
+
+      if len(matches) != len(subgraph_edges):
+         return {}
+      elif wildcard_edges:
+         matches = matches.union({edge for edge in self.edges.keys() if len(wildcard_edges) == len([wc for wc in wildcard_edges if wc in re.split("-|/",edge)])})
+
+      return {"links" : [self.edges[key].as_dict() for key in matches]}
+
 
    def adj_nodes(self,node_id:int) -> list:
       """Function to return a list of nodes that are adjacent to a specified node of id 'node_id'.
@@ -844,20 +850,23 @@ class GraphManipulator:
          "longest_directed_path" : (self.longest_path(graph)),
          "longest_undirected_path" : (self.longest_path(graph,directed=False))}
       
-   def checkSubgraph(self,json_subgraph):
+   def checkSubgraph(self,subgraph_list):
       """Function to find all graphs that contain a specified subgraph pattern.
       
-      :param json_subgraph: A json object containing the subgraph to be searched for.
-      :type json_subgraph: json
+      :param subgraph_list: A json object containing the subgraph to be searched for.
+      :type subgraph_list: list
       :raises GraphsNotFound: if no graphs are found to match the input subgraph.
       :returns: A dictionary of edge lists with a graph's id as the key is returned.
       :rtype: dict
       """
+      import re
       
       graph_dict = {}
 
+      links = [re.split('-|/',link) for link in subgraph_list]
+ 
       for graph_id in self.Graphs:
-         edge_list = self.Graphs[graph_id].subgraph_search(json_subgraph)
+         edge_list = self.Graphs[graph_id].subgraph_search(links)
          if edge_list:
             graph_dict[graph_id] = edge_list
       

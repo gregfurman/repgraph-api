@@ -429,7 +429,7 @@ class TestSubgraphSearch(TestAPI):
       Testing a subgraph being searched for and succeeding with 1 match.
       """
       self.upload_file()
-      response = self.app.post("search_subgraph",data='{ "_account_v_for" : [["_fund_n_1","Arg1","NEQ"]],   "_now_a_1" : [["_account_v_for","Arg1","EQ"]],   "_these_q_dem" : [["_fund_n_1","RSTR","H"]]}',content_type="application/json")
+      response = self.app.post("search_subgraph",data='{ "links" : ["_account_v_for-Arg1/NEQ-_fund_n_1" , "_now_a_1-Arg1/EQ-_account_v_for" ,"_these_q_dem-RSTR/H-_fund_n_1"]}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
       self.assertCountEqual(response_as_dict["graph_ids"],[20034012])
 
@@ -438,7 +438,7 @@ class TestSubgraphSearch(TestAPI):
       Testing subgraph pattern to match all graphs and succeeding.
       """
       self.upload_file()
-      response = self.app.post("search_subgraph",data='{"*" : [["*","*","*"]]}',content_type="application/json")
+      response = self.app.post("search_subgraph",data='{"links" :["*-*/*-*"]}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
       self.assertEqual(len(response_as_dict["graph_ids"]),441)
 
@@ -447,7 +447,7 @@ class TestSubgraphSearch(TestAPI):
       Testing subgraph pattern to match all graphs and succeeding.
       """
       self.upload_file()
-      response = self.app.post("search_subgraph",data='{"*" : [["*","Arg2","*"]],"_now_a_1" : [["_account_v_for","Arg1","EQ"]],"_these_q_dem" : [["_fund_n_1","RSTR","H"]]}',content_type="application/json")
+      response = self.app.post("search_subgraph",data='{ "links" : ["*-Arg1/*-*","_now_a_1-Arg1/EQ-_account_v_for","_these_q_dem-RSTR/H-_fund_n_1"]}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
       self.assertEqual(len(response_as_dict["graph_ids"]),1)
 
@@ -456,7 +456,7 @@ class TestSubgraphSearch(TestAPI):
       Testing a subgraph being searched for and succeeding.
       """
       self.upload_file()
-      response = self.app.post("search_subgraph",data='{"xxxx" : [["xxxx","xxx","xxx"]]}',content_type="application/json")
+      response = self.app.post("search_subgraph",data='{"links" : ["xxx-xxx/xxx-xxx"]}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
       self.assertEqual(response_as_dict["status"],404)
 
