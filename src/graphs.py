@@ -37,7 +37,7 @@ class Node:
       """
       return self.label[0] == "_"
 
-   def as_dict(self,include_neighbours=True) -> dict:
+   def as_dict(self,include_neighbours=True,include_id=False) -> dict:
       """Returns a node as a dictionary object.
       
       :param include_neighbours: boolean to include a node's incoming and outgoing neighbours in the resulting dictionary (default is True).
@@ -53,6 +53,9 @@ class Node:
          result["incoming"] = [(edge.get_src().id) for edge in self.incomingEdges]
          result["outgoing"] = [(edge.get_trg().id) for edge in self.outgoingEdges]
       
+      if include_id:
+         result["id"] = str(self.id)
+
       return result
 
    def get_neighbour_by_node(self,node_id,directed=True):
@@ -176,18 +179,25 @@ class Edge:
    def get_label(self):
       return f"{self.node_source.label}-{self.label}-{self.node_target.label}"
 
-   def as_dict(self) -> dict:
+   def as_dict(self,label_as_id=False) -> dict:
       """Function that returns an edge's labels and target & source nodes in dictionary format.
       :returns: an edge object represented as a dictionary.
       :rtype: dict:
       """
       edge_dict = {}
 
-      if self.node_source:
-         edge_dict["src"] = self.node_source.id
+      if label_as_id:
+         if self.node_source:
+            edge_dict["src"] = self.node_source.label
 
-      if self.node_target:
-         edge_dict["trg"] = self.node_target.id
+         if self.node_target:
+            edge_dict["trg"] = self.node_target.label
+      else:
+         if self.node_source:
+            edge_dict["src"] = self.node_source.id
+
+         if self.node_target:
+            edge_dict["trg"] = self.node_target.id
 
       edge_dict["label"] = self.label 
 
@@ -303,21 +313,28 @@ class Graph:
       matching_edges = self.edges.keys() & other.edges.keys()
       different_edges = self.edges.keys() ^ other.edges.keys()
 
-      result["matching"] = self.edge_list_to_graph(list(matching_edges))
+      graph_1_nodes = {node.label for node in self.nodes.values()}
+      graph_2_nodes = {node.label for node in other.nodes.values()}
+
+      matching_nodes = list(graph_1_nodes & graph_2_nodes)
+      excl_graph_1_nodes = list(graph_1_nodes - graph_2_nodes)
+      excl_graph_2_nodes = list(graph_2_nodes - graph_1_nodes)
+
+      result["matching"] = self.graphs_to_lists(list(matching_edges),matching_nodes)
+      result["matching"].update({"nodes" : list(matching_nodes)})
       
-      result["graph_1"] = {str(self.id) : self.edge_list_to_graph(list(self.edges.keys() & different_edges))}
-      result["graph_2"] = {str(other.id) : other.edge_list_to_graph(list(other.edges.keys() & different_edges))}
+      result["graph_1"] = {str(self.id) : self.graphs_to_lists(list(self.edges.keys() & different_edges),excl_graph_1_nodes)}
+      result["graph_2"] = {str(other.id) : other.graphs_to_lists(list(other.edges.keys() & different_edges),excl_graph_2_nodes)}
 
       return result
 
-   def edge_list_to_graph(self,edge_keys):
-      """Converts a list of edge keys to a dictonary of edges and nodes. """
-      edges = [self.edges[edge].as_dict() for edge in edge_keys]
-      nodes = {str(self.edges[key].get_src().id): self.edges[key].get_src().as_dict(False) for key in edge_keys}
-      nodes.update({str(self.edges[key].get_trg().id): self.edges[key].get_trg().as_dict(False) for key in edge_keys})
-      
-      return {"edges" : edges, "nodes":nodes}
+   def graphs_to_lists(self,edge_keys,nodes):
+      """Converts a list of edge keys to a dictonary of edges. """
+      edges = [self.edges[edge].as_dict(label_as_id=True) for edge in edge_keys]
 
+      return {"edges" : edges, "nodes" : nodes}
+
+   
 
    def display(self):
       """Displays all nodes and edges in a graph in string format."""
@@ -472,10 +489,10 @@ class Graph:
       return paths
 
    def path_to_graph(self,node_ids,directed=True):
-      nodes = {str(node): self.nodes[node].as_dict(False) for node in node_ids}
-      edges = [self.nodes[node_ids[i]].get_neighbour_by_node(node_ids[i+1],directed=directed).as_dict() for i in range(len(node_ids)-1)]
+      # nodes = {str(node): self.nodes[node].as_dict(False) for node in node_ids}
+      edges = [self.nodes[node_ids[i]].get_neighbour_by_node(node_ids[i+1],directed=directed).as_dict(label_as_id=True) for i in range(len(node_ids)-1)]
       
-      return {"edges" : edges, "nodes" : nodes}
+      return {"edges" : edges}
 
    def findLongestPath(self,directed=True,connected=True) -> dict:
       """Function to calculate and return the longest directed or undirected path in connected or non-connected graph.
@@ -900,7 +917,6 @@ class GraphManipulator:
       """
 
       result = graph.findLongestPath(directed=directed,connected=graph.connected)
-
       return result
 
    def is_connected(self,graph):

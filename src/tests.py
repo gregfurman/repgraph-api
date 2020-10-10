@@ -183,8 +183,8 @@ class TestGraphComparison(TestAPI):
       self.upload_file()
       response = self.app.get("compare/20013011_20013011")
       response_as_dict = json.loads(response.get_data(as_text=True))['output']
-      self.assertDictEqual(response_as_dict['graph_1'],{"20013011" : {"edges":[],"nodes":{}}})
-      self.assertDictEqual(response_as_dict['graph_2'],{"20013011" : {"edges":[],"nodes":{}}})
+      self.assertDictEqual(response_as_dict['graph_1'],{"20013011" : {"edges":[],"nodes":[]}})
+      self.assertDictEqual(response_as_dict['graph_2'],{"20013011" : {"edges":[],"nodes":[]}})
 
    def test_comparison_valid(self):
       """
@@ -194,8 +194,7 @@ class TestGraphComparison(TestAPI):
       self.upload_file("duplicate.dmrs")
       response = self.app.get("compare/20010002_20010004")
       response_as_dict = json.loads(response.get_data(as_text=True))["output"]
-      expected_resp = {'matching':{'edges':[{'src':1,'trg':2,'label':'RSTR/H'},{'src':0,'trg':3,'label':'ARG1/H'},{'src':0,'trg':4,'label':'MOD/EQ'}],'nodes':{'1':{'label':'_this_q_dem','anchors':[1]},'0':{'label':'neg','anchors':[0]},'2':{'label':'_year_n_1','anchors':[2]},'3':{'label':'loc_nonsp','anchors':[1,2]},'4':{'label':'unknown','anchors':[0,1,2]}}},'graph_1':{'20010002':{'edges':[{'src':3,'trg':4,'label':'ARG1/NEQ'},{'src':3,'trg':2,'label':'ARG2/NEQ'}],'nodes':{'3':{'label':'loc_nonsp','anchors':[1,2]},'4':{'label':'unknown','anchors':[0,1,2]},'2':{'label':'_year_n_1','anchors':[2]}}}},'graph_2':{'20010004':{'edges':[{'src':3,'trg':2,'label':'ARG2/EQ'},{'src':3,'trg':4,'label':'ARG1/EQ'}],'nodes':{'3':{'label':'loc_nonsp','anchors':[1,2]},'2':{'label':'_year_n_1','anchors':[2]},'4':{'label':'unknown','anchors':[0,1,2]}}}}}
-      # self.assertDictEqual(response_as_dict,expected_resp)
+      expected_resp = {'matching': {'edges': [{'src': 'neg', 'trg': 'loc_nonsp', 'label': 'ARG1/H'}, {'src': 'neg', 'trg': 'unknown', 'label': 'MOD/EQ'}, {'src': '_this_q_dem', 'trg': '_year_n_1', 'label': 'RSTR/H'}], 'nodes': ['_year_n_1', 'neg', '_this_q_dem', 'loc_nonsp', 'unknown']}, 'graph_1': {'20010002': {'edges': [{'src': 'loc_nonsp', 'trg': '_year_n_1', 'label': 'ARG2/NEQ'}, {'src': 'loc_nonsp', 'trg': 'unknown', 'label': 'ARG1/NEQ'}], 'nodes': []}}, 'graph_2': {'20010004': {'edges': [{'src': 'loc_nonsp', 'trg': '_year_n_1', 'label': 'ARG2/EQ'}, {'src': 'loc_nonsp', 'trg': 'unknown', 'label': 'ARG1/EQ'}], 'nodes': []}}} 
       self.assertCountEqual(response_as_dict['matching'],expected_resp['matching'])
       self.assertCountEqual(response_as_dict['graph_1'],expected_resp['graph_1'])
       self.assertCountEqual(response_as_dict['graph_2'],expected_resp['graph_2'])
