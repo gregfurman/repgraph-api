@@ -150,12 +150,12 @@ class GraphProperties(Resource):
 class GraphsByNodes(Resource):
    """Flask-RESTful Resource that allows a user to get a list of graph objects that contain a list of node labels. """
 
-   def get(self,label):
+   def post(self):
       result =  {}
 
       try:
-         # args = request.get_json(force=True)
-         graph_list = graphs.getGraphsByNode([label])
+         args = request.get_json(force=True)
+         graph_list = graphs.getGraphsByNode(args["labels"])
          result["output"] = graph_list[0]
          result["graph_ids"] = graph_list[1]
          result["message"] = "Successfully returned graphs"
