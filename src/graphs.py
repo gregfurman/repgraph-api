@@ -488,10 +488,27 @@ class Graph:
          
       return paths
 
-   def path_to_graph(self,node_ids,directed=True):
-      # nodes = {str(node): self.nodes[node].as_dict(False) for node in node_ids}
+   def path_to_graph(self,node_ids:list,directed=True) -> dict:
+      """ Takes a path of node ids and converts it to an edge list.
+      
+      :param node_ids: The id of nodes in order of traversal.
+      :type node_id: list
+      :param directed: indicated whether the path being parsed is directed or undirected (default is True).
+      :type directed: bool
+      :returns: A dictionary of edges that have been converted to dictionary format.
+      :rtype: dict
+      """
       edges = [self.nodes[node_ids[i]].get_neighbour_by_node(node_ids[i+1],directed=directed).as_dict(label_as_id=True) for i in range(len(node_ids)-1)]
       
+      if not directed:
+
+         for index in range(len(edges)-1):
+            if edges[index]["trg"] != edges[index+1]["src"]:
+               if edges[index]["src"] == edges[index+1]["src"]:
+                  edges[index]["trg"],edges[index]["src"] = edges[index]["src"],edges[index]["trg"]
+               else:
+                  edges[index+1]["trg"],edges[index+1]["src"] = edges[index+1]["src"],edges[index+1]["trg"]
+               
       return {"edges" : edges}
 
    def findLongestPath(self,directed=True,connected=True) -> dict:

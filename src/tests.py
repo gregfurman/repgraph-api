@@ -206,25 +206,26 @@ class TestGraphNodes(TestAPI):
       Testing node label search with no labels.
       """
       self.upload_file()
-      response = self.app.get("node_search/''")
+      response = self.app.post("node_search",data='{"labels" : []}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
-      self.assertEqual(response_as_dict["status"],404)
+
+      self.assertEqual(response_as_dict["status"],400)
 
    def test_search_crash(self):
       """ 
       Testing node label search's ability to prevent a crash.
       """
       self.upload_file()
-      response = self.app.get("node_search/'fail'")
+      response = self.app.post("node_search",data='{"labels" : "["fail"]"}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
-      self.assertEqual(response_as_dict["status"],404)
+      self.assertEqual(response_as_dict["status"],400)
 
    def test_search_fail(self):
       """ 
       Testing node label search with a label that does not exist within the data.
       """
       self.upload_file()
-      response = self.app.get("node_search/'fail'")
+      response = self.app.post("node_search",data='{"labels" : ["fail"]}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
       self.assertEqual(response_as_dict["status"],404)
 
@@ -234,7 +235,7 @@ class TestGraphNodes(TestAPI):
       Testing node label search's ability to prevent a crash.
       """
       self.upload_file()
-      response = self.app.get("node_search/1")
+      response = self.app.post("node_search",data='{"labels" : "[1,2,3]"}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
       self.assertEqual(response_as_dict["status"],404)
 
@@ -243,7 +244,7 @@ class TestGraphNodes(TestAPI):
       Testing node label search with a single label where some have label.
       """
       self.upload_file("label_test.dmrs")
-      response = self.app.get("node_search/udef_q")
+      response = self.app.post("node_search",data='{"labels" :["udef_q"] }',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
       graph_ids = set([20003013,20001002])
       self.assertEqual(response_as_dict["output"].keys() & graph_ids,set())
@@ -254,7 +255,7 @@ class TestGraphNodes(TestAPI):
       returned in a list.
       """
       self.upload_file("label_test.dmrs")
-      response = self.app.get("node_search/udef_q")
+      response = self.app.post("node_search",data='{"labels" :["udef_q"] }',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
       graph_ids = set([20003013,20001002])
       self.assertEqual(response_as_dict["output"].keys() & graph_ids & set(response_as_dict["graph_ids"]),set())
@@ -264,7 +265,7 @@ class TestGraphNodes(TestAPI):
       Testing node label search where all graphs have label.
       """
       self.upload_file("label_test.dmrs")
-      response = self.app.get("node_search/proper_q")
+      response = self.app.post("node_search",data='{"labels" :["proper_q"] }',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
       graph_ids = set([20001001,20001002,20003001,20003002,20003003,20003004,20003005,20003008,20003009,20003010,20003011,20003012,20003013,20003007])
       self.assertEqual(response_as_dict["output"].keys() & graph_ids,set())
@@ -274,10 +275,11 @@ class TestGraphNodes(TestAPI):
       Testing node label search where some graphs have 1 or more labels.
       """
       self.upload_file("label_test.dmrs")
-      response = self.app.get("node_search/_inc_n_1")
+      response = self.app.post("node_search",data='{"labels" :["_inc_n_1","generic_entity"] }',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
       graph_ids = set([20003013,20003003])
       self.assertEqual(response_as_dict["output"].keys() & graph_ids,set())
+
 
 class TestGraphProperties(TestAPI):
 
