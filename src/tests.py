@@ -280,7 +280,6 @@ class TestGraphNodes(TestAPI):
       graph_ids = set([20003013,20003003])
       self.assertEqual(response_as_dict["output"].keys() & graph_ids,set())
 
-
 class TestGraphProperties(TestAPI):
 
    def test_connected_acyclic(self):
@@ -458,6 +457,71 @@ class TestSubgraphSearch(TestAPI):
       """
       self.upload_file()
       response = self.app.post("search_subgraph",data='{"links" : ["xxx-xxx/xxx-xxx"]}',content_type="application/json")
+      response_as_dict = json.loads(response.get_data(as_text=True))
+      self.assertEqual(response_as_dict["status"],404)
+
+class TestSentenceSearch(TestAPI):
+
+   def test_single_letter_match(self):
+      """Test to successfully match a single letter."""
+      self.upload_file()
+      response = self.app.post("sentence",data='{ "sentence" : "t"}',content_type="application/json")
+      response_as_dict = json.loads(response.get_data(as_text=True))["output"]
+      self.assertCountEqual(response_as_dict["graph_ids"],[20003020])
+
+   def test_single_letter_no_match(self):
+      """Test to fail to match a single letter."""
+      self.upload_file()
+      response = self.app.post("sentence",data='{ "sentence" : "x"}',content_type="application/json")
+      response_as_dict = json.loads(response.get_data(as_text=True))
+      self.assertEqual(response_as_dict["status"],404)
+
+   def test_single_word_match(self):
+      """Test to successfully match a single word."""
+      self.upload_file()
+      response = self.app.post("sentence",data='{ "sentence" : "concern"}',content_type="application/json")
+      response_as_dict = json.loads(response.get_data(as_text=True))["output"]
+      self.assertCountEqual(response_as_dict["graph_ids"],[
+            20020014,
+            20023002,
+            20030001,
+            20034022,
+            20037051
+        ])
+
+   def test_single_word_no_match(self):
+      """Test to fail to match a single word."""
+      self.upload_file()
+      response = self.app.post("sentence",data='{ "sentence" : "black"}',content_type="application/json")
+      response_as_dict = json.loads(response.get_data(as_text=True))
+      self.assertEqual(response_as_dict["status"],404)
+
+   def test_single_term_match(self):
+      """Test to match a single 2 word term."""
+      self.upload_file()
+      response = self.app.post("sentence",data='{ "sentence" : "concern to"}',content_type="application/json")
+      response_as_dict = json.loads(response.get_data(as_text=True))["output"]
+      self.assertCountEqual(response_as_dict["graph_ids"],[20020014])
+
+   def test_to_match_sentence(self):
+      """Test to succesfully match a full sentence."""
+      self.upload_file()
+      response = self.app.post("sentence",data='{ "sentence" : "Champagne and dessert followed."}',content_type="application/json")
+      response_as_dict = json.loads(response.get_data(as_text=True))["output"]
+      self.assertCountEqual(response_as_dict["graph_ids"],[20010008])
+
+   def test_to_fail_to_match_empty_sentence(self):
+      """Test to fail to match a full sentence."""
+      self.upload_file()
+      response = self.app.post("sentence",data='{ "sentence" : ""}',content_type="application/json")
+      response_as_dict = json.loads(response.get_data(as_text=True))
+      self.assertEqual(response_as_dict["status"],404)      
+
+   def test_to_fail_due_to_length(self):
+      """Test to fail to match a full sentence."""
+      self.upload_file()
+      example_string=" ".join([str(x) for x in range(1000)])
+      response = self.app.post("sentence",data= f'{{ "sentence" :  "{example_string}" }}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
       self.assertEqual(response_as_dict["status"],404)
 

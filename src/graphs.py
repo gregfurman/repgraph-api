@@ -29,13 +29,29 @@ class Node:
    def __ne__(self, other):
       return not(other.label == self.label)
 
+   def compare(self,other):
+      min_key = self.min_token()
+      other_min_key = other.min_token()
+      if min_key > other_min_key:
+         return 1
+      elif min_key < other_min_key:
+         return -1
+      else:
+         return 0
+   
+   def min_token(self):
+      return min(self.anchors.keys())
+
+   def max_token(self):
+      return max(self.anchors.keys())
+
    def is_surface(self) -> bool:
       """Determines if a node is a surface node or not.
       
       :returns: if a node is a surface node then 'True' else a node is abstract therefore 'False'.
       :rtype: bool
       """
-      return self.label[0] == "_"
+      return self.label[0] == "_" 
 
    def as_dict(self,include_neighbours=True,include_id=False) -> dict:
       """Returns a node as a dictionary object.
@@ -75,13 +91,13 @@ class Node:
    def __repr__(self):
       return str(self.id)
 
-   def __cmp__(self,other):
-      if self.id > other.id:
-         return 1
-      elif self.id < other.id:
-         return -1
+   # def __cmp__(self,other):
+   #    if self.id > other.id:
+   #       return 1
+   #    elif self.id < other.id:
+   #       return -1
       
-      return 0
+   #    return 0
 
    def compare_labels(self,other):
       return other.label == self.label
@@ -212,6 +228,9 @@ class Edge:
    def __eq__(self,other):
       return self.node_target.label == other.node_target.label and self.node_source.label == other.node_source.label and self.label == other.label
 
+   def __hash__(self):
+      return self.get_label()
+
 class Token:
    """A Token object has an index, form, lemma and an optional carg.
 
@@ -283,9 +302,17 @@ class Graph:
 
       self.tokens = {token['index']: Token(token_input=token) for token in graph_input['tokens']}
       self.nodes = {node['id']: Node(node_input=node,tokens=self.tokens) for node in graph_input['nodes']}
-      self.edges = {f"{self.nodes[edge['source']].label}-{edge['label']}/{edge['post-label']}-{self.nodes[edge['target']].label}":   Edge(self.nodes[edge['source']],self.nodes[edge['target']],edge['label'],edge['post-label']) for edge in graph_input['edges']}      
-      self.top = self.nodes[graph_input['tops'][0]]
 
+      self.edges = dict()
+
+      for edge in graph_input['edges']:
+         key = f"{self.nodes[edge['source']].label}-{edge['label']}/{edge['post-label']}-{self.nodes[edge['target']].label}"
+         self.edges.setdefault(key, []).append(Edge(self.nodes[edge['source']],self.nodes[edge['target']],edge['label'],edge['post-label'])) 
+
+      if sum([len(edges) for edges in self.edges.values()]) != len(graph_input['edges']):
+         raise GraphError(f"Expected {len(graph_input['edges'])} edges but found {sum([len(edges) for edges in self.edges.values()])}.")
+
+      self.top = self.nodes[graph_input['tops'][0]]
       self.connected = None
 
 
@@ -330,8 +357,8 @@ class Graph:
 
    def graphs_to_lists(self,edge_keys,nodes):
       """Converts a list of edge keys to a dictonary of edges. """
-      edges = [self.edges[edge].as_dict(label_as_id=True) for edge in edge_keys]
-
+      edges = [edge.as_dict(label_as_id=True) for key in edge_keys for edge in self.edges[key]]
+      # edges = [self.edges[edge].as_dict(label_as_id=True) for edge in self.edges[key] for key in edge_keys]
       return {"edges" : edges, "nodes" : nodes}
 
    
@@ -589,7 +616,7 @@ class Graph:
       elif wildcard_edges:
          matches = matches.union({edge for edge in self.edges.keys() if len(wildcard_edges) == len([wc for wc in wildcard_edges if wc in re.split("-|/",edge)])})
 
-      return {"links" : [self.edges[key].as_dict() for key in matches]}
+      return {"links" : [edges.as_dict() for key in matches for edges in self.edges[key]]}
 
 
    def adj_nodes(self,node_id:int) -> list:
@@ -610,11 +637,14 @@ class Graph:
       """
       edges_dict = {}
       
-      for edge in edges.values():
-         key = f"{edge.get_src().label}-{edge.get_trg().label}"
+      if isinstance(edges,dict):
+         edges = edges.values()
+
+      for edge in edges:
+         key = f"{edge.get_src().label}/{edge.get_src().id}-{edge.get_trg().label}/{edge.get_trg().id}"
 
          if key not in edges_dict:
-            edges_dict[key] = edge.as_dict()
+            edges_dict[key] = edge.as_dict()   
          else:
             edges_dict[key]['label'] += f" || { edge.as_dict()['label']}"
 
@@ -626,10 +656,61 @@ class Graph:
       
       :param subgraph: dictionary of subgraph.
       :type subgraph: dict
-
       """
       subgraph["edges"] = self.merge_edge_labels(edges=subgraph["edges"])
       subgraph["tokens"] = {key: self.tokens[key].as_dict() for key in self.tokens.keys() & subgraph["tokens"]}
+
+
+   def planarity_check(self):
+      """Checks whether a graph is planar.
+      
+      :returns: a boolean indicating whether a graph is planar.
+      :rtype: bool
+      """ 
+      sorted_nodes = {k: v for k,v in sorted(self.nodes.items(), key= lambda item:item[1].min_token())}
+
+      edges = []
+
+      for edge in [edge for edges in self.edges.values() for edge in edges]:
+         edges.append(Edge(sorted_nodes[edge.get_src().id],sorted_nodes[edge.get_trg().id],edge.pre_label,edge.post_label,add_edge=False))
+
+      for i in range(len(edges)):
+         edge = edges[i]
+         for j in range(i+1,len(edges)):
+            other = edges[j]
+            if min(edge.get_src().min_token(),edge.get_trg().min_token()) < min(other.get_src().min_token(),other.get_trg().min_token()) and min(other.get_src().min_token(),other.get_trg().min_token()) < max(edge.get_src().max_token(),edge.get_trg().max_token()) and max(edge.get_src().max_token(),edge.get_trg().max_token()) < max(other.get_src().max_token(),other.get_trg().max_token()):
+               return False
+            
+      return True
+
+
+   def sentence_search(self,sentence:str)->bool:
+      """Determines whether a given input string is in a graph's sentence.
+
+      :param sentence: the sub-sentence that is being searched for in a graphs sentence.
+      :type sentence: str
+      :returns: boolean indicating whether a string is in a sentence.
+      :rtype: bool
+      """
+      
+      sentence = ' '.join(sentence.split())
+      sub_sentence =   ''.join(x for x in sentence.strip() if x.isalnum() or x==' ').lower().split(" ")
+      targ_sentence = ''.join(x for x in self.sentence.strip() if x.isalnum() or x==' ').lower().split(" ")
+      
+      if sub_sentence == [""]:
+         return False
+      elif sub_sentence == targ_sentence:
+         return True
+      elif len(sub_sentence) > len(targ_sentence):
+         return False
+
+      for index in range(len(targ_sentence)-len(sub_sentence)):
+         window = targ_sentence[index:len(sub_sentence)+index]
+
+         if window == sub_sentence:
+            return True
+
+      return False
 
 
    def as_dict(self) -> dict:
@@ -644,7 +725,7 @@ class Graph:
       graph_dict["id"] = str(self.id)
       graph_dict["a_nodes"] = {str(node): self.nodes[node].as_dict() for node in self.nodes if not(self.nodes[node].is_surface())}
       graph_dict["s_nodes"] = {str(node): self.nodes[node].as_dict() for node in self.nodes if self.nodes[node].is_surface()}
-      graph_dict["edges"] = self.merge_edge_labels(self.edges)
+      graph_dict["edges"] = self.merge_edge_labels([edge for edges in self.edges.values() for edge in edges])
       graph_dict["tokens"] = {str(token): self.tokens[token].as_dict() for token in self.tokens.keys()}
       graph_dict["tops"] = {str(self.top.id) : self.top.as_dict()}
       graph_dict["sentence"] = [token.form for token in self.tokens.values()]
@@ -666,7 +747,6 @@ class GraphManipulator:
       self.Graphs = {}
 
    def addGraph(self,graph):
-      import sys
       """Adds a graph to the GraphManipulators Graph dictionary.
       
       :param graph: JSON data in byte form that will be parsed to Graph format.
@@ -789,7 +869,7 @@ class GraphManipulator:
          pages += 1
 
       if total_remaining >= 0:
-         return {"graphs" : graph_list,"graph_ids":sorted_keys, "page_no" : page_no,"returned" : len(graph_list), "remaining" : {"graphs": total_remaining, "pages": pages } }
+         return {"graphs" : graph_list,"graph_ids":sorted_keys,"total_pages" : total_pages, "page_no" : page_no,"returned" : len(graph_list), "remaining" : {"graphs": total_remaining, "pages": pages } }
       
    def compare(self,graph_id_1,graph_id_2):
       """Method to compare 2 graphs and return all similarities and differences in dictionary format.
@@ -880,7 +960,8 @@ class GraphManipulator:
       return {
          "id" : str(graph_id),
          "connected" : str(self.is_connected(graph)), 
-         "acyclic" : str(self.is_cyclic(graph)), 
+         "acyclic" : str(self.is_cyclic(graph)),
+         "planar" : str(self.is_planar(graph)), 
          "longest_directed_path" : (self.longest_path(graph)),
          "longest_undirected_path" : (self.longest_path(graph,directed=False))}
       
@@ -945,6 +1026,24 @@ class GraphManipulator:
       :rtype: bool
       """
       return graph.is_connected()
+
+   def is_planar(self,graph):
+      return graph.planarity_check()
+   
+   def filter_by_sentence(self,sentence:str)->list:
+      """Method to return all graph IDs where the corresponding graph's sentence is a superset of the input 'sentence'.
+
+      :param sentence: a string or sub-sentence which is being searched for.
+      :type sentence: str
+      :returns: list of graph ids where the sentence matches, even partially, the corresponding graph id's sentence.
+      :rtype: list
+      """
+      result =[graph_id for graph_id in self.Graphs.keys() if self.Graphs[graph_id].sentence_search(sentence)]
+
+      if result:
+         return result 
+
+      raise GraphsNotFound(str(sentence),"a sentence")
 
    def __len__(self):
       return len(self.Graphs.keys())

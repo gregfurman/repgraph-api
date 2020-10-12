@@ -62,7 +62,7 @@ class LoadGraphs(Resource):
          
          try:  
             graphs.addGraph(graph)
-         except (errors.GraphIdNotInteger,errors.GraphAlreadyExists,errors.GraphParseError) as e:
+         except (errors.GraphIdNotInteger,errors.GraphAlreadyExists,errors.GraphParseError, errors.GraphError) as e:
             warnings.append(str(e))
 
       if len(graphs) > 0:
@@ -88,6 +88,24 @@ class NodeNeighbours(Resource):
          result["message"] = f"The neighbours of node {node_id} in graph {graph_id} have been successfully returned."
          return result,result["status"] 
       except (errors.GraphsNotFound,errors.NodeNotFoundError) as e:
+         return {"message" : str(e) ,"status":404},404
+      except:
+         raise errors.InternalServerError
+   
+class GraphsBySentence(Resource):
+   """Flask-RESTful Resource that allows a user to search for the existence of a 
+   sub-sentence, or partial sentence, within all the uploaded graphs."""
+
+   def post(self):
+      
+      try:
+         result = {}
+         sentence = request.get_json(force=True)["sentence"]
+         result["output"] = {"graph_ids" : graphs.filter_by_sentence(sentence)}
+         result["status"] = 200
+         result["message"] = f"The graphs matching '{sentence}' have have been found."
+         return result,result["status"] 
+      except (errors.GraphsNotFound) as e:
          return {"message" : str(e) ,"status":404},404
       except:
          raise errors.InternalServerError

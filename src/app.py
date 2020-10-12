@@ -13,7 +13,10 @@ def create_app(config: dict = None) -> Flask:
    @app.errorhandler(404)
    def page_not_found(e):
       return {"message" : "page not found"}, 404
-
+   
+   @app.errorhandler(400)
+   def page_not_found(e):
+      return {"message" : "Bad request"}, 400
 
    create_routes(api)
 
@@ -25,7 +28,8 @@ def create_routes(api:Api):
    api.add_resource(GraphProperties, '/graph_properties/<int:graph_id>')
    api.add_resource(GraphsBySubgraph,'/search_subgraph')
    api.add_resource(GraphsByNodes,'/node_search')
-   api.add_resource(GraphsById,'/get_graphs') 
+   api.add_resource(GraphsById,'/get_graphs')
+   api.add_resource(GraphsBySentence,'/sentence') 
    api.add_resource(GraphsByPage,'/get_graphs/<int:page_no>')
    api.add_resource(GraphCount,'/graph_count')
    api.add_resource(GraphRD,'/graphs/<string:graph_id>') 
