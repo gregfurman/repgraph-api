@@ -916,6 +916,10 @@ class GraphManipulator:
 
       return subgraph
 
+   def sentences_from_list(self,graph_ids):
+
+      return [{"graph_id" : graph_id, "sentence" : self.Graphs[graph_id].sentence} for graph_id in graph_ids]
+
 
    def getGraphsByNode(self,node_labels):
       """Returns a list of graphs that contain a list of node labels.
@@ -927,21 +931,21 @@ class GraphManipulator:
       :returns: tuple containing a list of Graph objects that have 1 or more matching node labels and a list of the Graph objects ids.
       :rtype: tuple
       """
-      graphs = {}
+      
       
       if not node_labels:
          raise NoNodeLabelsSupplied(f"No node labels were given.")
       
       graph_ids= []
       
+      
       for key in self.Graphs.keys():
          node_ids = self.Graphs[key].has_labels(node_labels)
          if node_ids:
-            graphs[key]=node_ids
             graph_ids.append(key)
       
-      if graphs:
-         return graphs,graph_ids
+      if graph_ids:
+         return graph_ids,self.sentences_from_list(graph_ids)
 
       raise GraphsNotFound(value=str(node_labels),valueType="node labels")
 
@@ -972,24 +976,24 @@ class GraphManipulator:
       :type subgraph_list: list
       :raises GraphsNotFound: if no graphs are found to match the input subgraph.
       :returns: A dictionary of edge lists with a graph's id as the key is returned.
-      :rtype: dict
+      :rtype: tuple
       """
       import re
       
-      graph_dict = {}
+      graph_ids = []
 
       links = [re.split('-|/',link) for link in subgraph_list]
  
       for graph_id in self.Graphs:
          edge_list = self.Graphs[graph_id].subgraph_search(links)
          if edge_list:
-            graph_dict[graph_id] = edge_list
+            graph_ids.append(graph_id)
       
-      if not graph_dict:
-         raise GraphsNotFound(valueType="connections",value="the input subgraph")
+      if graph_ids:
+         return graph_ids,self.sentences_from_list(graph_ids)
+      
+      raise GraphsNotFound(valueType="connections",value="the input subgraph")
 
-
-      return graph_dict
 
    def is_cyclic(self, graph):
       """Function to determine whether a given graph, specified by 'graph', contains a cycle.
@@ -1038,10 +1042,12 @@ class GraphManipulator:
       :returns: list of graph ids where the sentence matches, even partially, the corresponding graph id's sentence.
       :rtype: list
       """
-      result =[graph_id for graph_id in self.Graphs.keys() if self.Graphs[graph_id].sentence_search(sentence)]
+      graph_ids =[graph_id for graph_id in self.Graphs.keys() if self.Graphs[graph_id].sentence_search(sentence)]
 
-      if result:
-         return result 
+
+      
+      if graph_ids:
+         return graph_ids,self.sentences_from_list(graph_ids) 
 
       raise GraphsNotFound(str(sentence),"a sentence")
 

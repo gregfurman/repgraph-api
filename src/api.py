@@ -101,8 +101,10 @@ class GraphsBySentence(Resource):
       try:
          result = {}
          sentence = request.get_json(force=True)["sentence"]
-         result["output"] = {"graph_ids" : graphs.filter_by_sentence(sentence)}
+         output = graphs.filter_by_sentence(sentence)
+         result["output"] = {"graph_ids" : output[0], "sentence" : output[1]}
          result["status"] = 200
+         result["search_key"] = sentence
          result["message"] = f"The graphs matching '{sentence}' have have been found."
          return result,result["status"] 
       except (errors.GraphsNotFound) as e:
@@ -139,8 +141,8 @@ class GraphsBySubgraph(Resource):
       try:
          subgraph = request.get_json(force=True)
          result = {}
-         result["output"] = graphs.checkSubgraph(subgraph["links"])
-         result["graph_ids"] = list(result["output"].keys())
+         output = graphs.checkSubgraph(subgraph["links"])
+         result["output"] = { "graph_ids" :output[0], "sentences" : output[1]}
          result['status'] = 200
          result['message'] = "Graphs that contain the input subset have been successfully returned."
          return result 
@@ -173,9 +175,8 @@ class GraphsByNodes(Resource):
 
       try:
          args = request.get_json(force=True)
-         graph_list = graphs.getGraphsByNode(args["labels"])
-         result["output"] = graph_list[0]
-         result["graph_ids"] = graph_list[1]
+         output = graphs.getGraphsByNode(args["labels"])
+         result["output"] = {"graph_ids" : output[0], "sentences" : output[1] }
          result["message"] = "Successfully returned graphs"
          result["status"] = 200
          return result,result["status"]

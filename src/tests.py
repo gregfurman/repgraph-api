@@ -256,9 +256,9 @@ class TestGraphNodes(TestAPI):
       """
       self.upload_file("label_test.dmrs")
       response = self.app.post("node_search",data='{"labels" :["udef_q"] }',content_type="application/json")
-      response_as_dict = json.loads(response.get_data(as_text=True))
+      response_as_dict = json.loads(response.get_data(as_text=True))["output"]
       graph_ids = set([20003013,20001002])
-      self.assertEqual(response_as_dict["output"].keys() & graph_ids & set(response_as_dict["graph_ids"]),set())
+      self.assertEqual(set(response_as_dict["graph_ids"]),graph_ids)
          
    def test_search_pass_1(self):
       """ 
@@ -430,7 +430,7 @@ class TestSubgraphSearch(TestAPI):
       """
       self.upload_file()
       response = self.app.post("search_subgraph",data='{ "links" : ["_account_v_for-Arg1/NEQ-_fund_n_1" , "_now_a_1-Arg1/EQ-_account_v_for" ,"_these_q_dem-RSTR/H-_fund_n_1"]}',content_type="application/json")
-      response_as_dict = json.loads(response.get_data(as_text=True))
+      response_as_dict = json.loads(response.get_data(as_text=True))["output"]
       self.assertCountEqual(response_as_dict["graph_ids"],[20034012])
 
    def test_search_pass_all(self):
@@ -439,7 +439,7 @@ class TestSubgraphSearch(TestAPI):
       """
       self.upload_file()
       response = self.app.post("search_subgraph",data='{"links" :["*-*/*-*"]}',content_type="application/json")
-      response_as_dict = json.loads(response.get_data(as_text=True))
+      response_as_dict = json.loads(response.get_data(as_text=True))["output"]
       self.assertEqual(len(response_as_dict["graph_ids"]),441)
 
    def test_search_wildcard_one_match(self):
@@ -448,7 +448,7 @@ class TestSubgraphSearch(TestAPI):
       """
       self.upload_file()
       response = self.app.post("search_subgraph",data='{ "links" : ["*-Arg1/*-*","_now_a_1-Arg1/EQ-_account_v_for","_these_q_dem-RSTR/H-_fund_n_1"]}',content_type="application/json")
-      response_as_dict = json.loads(response.get_data(as_text=True))
+      response_as_dict = json.loads(response.get_data(as_text=True))["output"]
       self.assertEqual(len(response_as_dict["graph_ids"]),1)
 
    def test_search_no_matches(self):
