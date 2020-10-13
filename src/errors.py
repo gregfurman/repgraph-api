@@ -43,10 +43,7 @@ custom_errors = {
       "message" : "No graphs with {valueType} matching {value} were found."
    },
 
-
 }
-
-
 
 class InternalServerError(HTTPException):
    pass
@@ -98,22 +95,15 @@ class EdgeAddError(GraphError):
       super().__init__(custom_errors['EdgeAddError']["message"].format(edge=str(edge)))
    pass
 
-
 class NoNodeLabelsSupplied(GraphError):
    pass
-
 
 class GraphsNotFound(GraphError):
    def __init__(self,value,valueType):
       super().__init__(custom_errors[str(self.__class__.__name__)]["message"].format(value=value,valueType=valueType))
-
-
 
 class UrlNotFound(Exception):
    pass
 
 class JsonParseError(HTTPException):
    pass
-
-
-
