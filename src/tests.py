@@ -9,6 +9,10 @@ DEFAULT_PATH = "test_data"
 
 class TestAPI(unittest.TestCase):
 
+   def shortDescription(self):
+         doc = self.__str__() +": "+self._testMethodDoc
+         return doc or None 
+
    def setUp(self):
       test_app= create_app()
       test_app.testing = True
@@ -266,19 +270,19 @@ class TestGraphNodes(TestAPI):
       """
       self.upload_file("label_test.dmrs")
       response = self.app.post("node_search",data='{"labels" :["proper_q"] }',content_type="application/json")
-      response_as_dict = json.loads(response.get_data(as_text=True))
-      graph_ids = set([20001001,20001002,20003001,20003002,20003003,20003004,20003005,20003008,20003009,20003010,20003011,20003012,20003013,20003007])
-      self.assertEqual(response_as_dict["output"].keys() & graph_ids,set())
+      response_as_dict = json.loads(response.get_data(as_text=True))["output"]
+      graph_ids = set([20001001,20001002,20003001,20003003,20003004,20003005,20003008,20003009,20003010,20003011,20003012])
+      self.assertEqual(set(response_as_dict["graph_ids"]), graph_ids)
 
    def test_search_pass_2(self):
       """ 
       Testing node label search where some graphs have 1 or more labels.
       """
       self.upload_file("label_test.dmrs")
-      response = self.app.post("node_search",data='{"labels" :["_inc_n_1","generic_entity"] }',content_type="application/json")
-      response_as_dict = json.loads(response.get_data(as_text=True))
-      graph_ids = set([20003013,20003003])
-      self.assertEqual(response_as_dict["output"].keys() & graph_ids,set())
+      response = self.app.post("node_search",data='{"labels" :["_inc_n_1","compound"] }',content_type="application/json")
+      response_as_dict = json.loads(response.get_data(as_text=True))["output"]
+      graph_ids = [20003003]
+      self.assertCountEqual(response_as_dict["graph_ids"],graph_ids)
 
 class TestGraphProperties(TestAPI):
 

@@ -390,8 +390,8 @@ class Graph:
       :returns: the ids of all nodes that have their labels within the input 'labels' list.
       :rtype: list
       """
-      node_ids = [str(node.id) for node in self.nodes.values() if node.label in labels]
-      if len(node_ids) == len(labels):
+      node_ids = [node.label for node in self.nodes.values() if node.label in labels]
+      if set(node_ids) == set(labels):
          return node_ids
 
       return []
