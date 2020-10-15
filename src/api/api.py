@@ -1,8 +1,7 @@
-import base64
 import errors
 from flask_restful import Resource, reqparse
 from flask import request, jsonify, session, make_response
-from graphs import GraphManipulator
+from graphs.graphmanipulator import GraphManipulator
 from werkzeug import datastructures as ds
 
 import json

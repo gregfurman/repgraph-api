@@ -1,8 +1,10 @@
 import unittest
-from app import create_app
-from flask import request, jsonify, Response
 import errors
 import json
+import os
+
+from app import create_app
+from flask import request, jsonify, Response
 
 DEFAULT_FILENAME = "wsj00a.dmrs"
 DEFAULT_PATH = "test_data"
@@ -22,7 +24,8 @@ class TestAPI(unittest.TestCase):
       self.app = None
 
    def upload_file(self,filename=DEFAULT_FILENAME):
-      filename = "/".join([DEFAULT_PATH,filename])
+      filename =  os.path.join(os.path.dirname(__file__), "/".join([DEFAULT_PATH,filename]))
+     
       data = (open(filename, "rb"),filename)
       return self.app.post("load_graphs", 
       data={"graphs" : data}, 
