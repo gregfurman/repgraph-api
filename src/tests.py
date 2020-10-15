@@ -186,7 +186,7 @@ class TestGraphComparison(TestAPI):
       """
       self.upload_file()
       response = self.app.get("compare/20013011_20013011")
-      response_as_dict = json.loads(response.get_data(as_text=True))['output']
+      response_as_dict = json.loads(response.get_data(as_text=True))['output']['comparison']
       self.assertDictEqual(response_as_dict['graph_1'],{"20013011" : {"edges":[],"nodes":[]}})
       self.assertDictEqual(response_as_dict['graph_2'],{"20013011" : {"edges":[],"nodes":[]}})
 
@@ -197,7 +197,7 @@ class TestGraphComparison(TestAPI):
       """
       self.upload_file("duplicate.dmrs")
       response = self.app.get("compare/20010002_20010004")
-      response_as_dict = json.loads(response.get_data(as_text=True))["output"]
+      response_as_dict = json.loads(response.get_data(as_text=True))["output"]['comparison']
       expected_resp = {'matching': {'edges': [{'src': 'neg', 'trg': 'loc_nonsp', 'label': 'ARG1/H'}, {'src': 'neg', 'trg': 'unknown', 'label': 'MOD/EQ'}, {'src': '_this_q_dem', 'trg': '_year_n_1', 'label': 'RSTR/H'}], 'nodes': ['_year_n_1', 'neg', '_this_q_dem', 'loc_nonsp', 'unknown']}, 'graph_1': {'20010002': {'edges': [{'src': 'loc_nonsp', 'trg': '_year_n_1', 'label': 'ARG2/NEQ'}, {'src': 'loc_nonsp', 'trg': 'unknown', 'label': 'ARG1/NEQ'}], 'nodes': []}}, 'graph_2': {'20010004': {'edges': [{'src': 'loc_nonsp', 'trg': '_year_n_1', 'label': 'ARG2/EQ'}, {'src': 'loc_nonsp', 'trg': 'unknown', 'label': 'ARG1/EQ'}], 'nodes': []}}} 
       self.assertCountEqual(response_as_dict['matching'],expected_resp['matching'])
       self.assertCountEqual(response_as_dict['graph_1'],expected_resp['graph_1'])
@@ -391,7 +391,7 @@ class TestGraphList(TestAPI):
 
    def test_graph_list_fail(self):
       """ 
-      Testing page out of bounds error.
+      Testing if none of the graphs ids input exist.
       """
       self.upload_file()
       response = self.app.get("get_graphs",data='{"graph_id_list" : [1,2,3]}',content_type="application/json")
@@ -400,7 +400,7 @@ class TestGraphList(TestAPI):
    
    def test_graph_list_crash(self):
       """ 
-      Testing page out of bounds error.
+      Testing if the input data is incorrectly formatted.
       """
       self.upload_file()
       response = self.app.get("get_graphs",data='{"graph_id_list" : "["1,"2",3]}',content_type="application/json")
@@ -409,7 +409,7 @@ class TestGraphList(TestAPI):
 
    def test_graph_list_pass(self):
       """ 
-      Testing pass without failure.
+      Testing if all graphs ids being searched for exist.
       """
       self.upload_file()
       response = self.app.get("get_graphs",data='{"graph_id_list" : ["20003001","20003002","20003003"]}',content_type="application/json")

@@ -348,7 +348,6 @@ class Graph:
       excl_graph_2_nodes = list(graph_2_nodes - graph_1_nodes)
 
       result["matching"] = self.graphs_to_lists(list(matching_edges),matching_nodes)
-      result["matching"].update({"nodes" : list(matching_nodes)})
       
       result["graph_1"] = {str(self.id) : self.graphs_to_lists(list(self.edges.keys() & different_edges),excl_graph_1_nodes)}
       result["graph_2"] = {str(other.id) : other.graphs_to_lists(list(other.edges.keys() & different_edges),excl_graph_2_nodes)}
@@ -886,10 +885,15 @@ class GraphManipulator:
       graph_1 = self.getGraph(graph_id_1)
       graph_2 = self.getGraph(graph_id_2)
 
-      result = graph_1.compare(graph_2)
+      result = {}
+      
+      comparison = graph_1.compare(graph_2)
 
-      if not(result):
+      if not(comparison):
          raise GraphComparisonError(f"Attempting to compare graphs with differing sentences.")
+      
+      result["comparison"] = comparison
+      result["graphs"] =  [graph_1.as_dict(),  graph_2.as_dict()]  
 
       return result
 
