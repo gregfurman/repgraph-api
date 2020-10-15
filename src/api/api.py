@@ -147,8 +147,8 @@ class GraphsBySubgraph(Resource):
          return result 
       except errors.GraphsNotFound as e:
          return {"message" : str(e), "status" : 404},404
-      except:
-         raise errors.JsonParseError
+      # except:
+      #    raise errors.JsonParseError
       
 class GraphProperties(Resource):
    """Flask-RESTful Resource that allows a user to get a graphs properties based on its ID. """

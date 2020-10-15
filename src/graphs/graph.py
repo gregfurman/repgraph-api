@@ -39,7 +39,7 @@ class Graph:
       self.edges = dict()
 
       for edge in graph_input['edges']:
-         key = f"{self.nodes[edge['source']].label}-{edge['label']}/{edge['post-label']}-{self.nodes[edge['target']].label}"
+         key = f"{self.nodes[edge['source']].label}--{edge['label']}/{edge['post-label']}--{self.nodes[edge['target']].label}"
          self.edges.setdefault(key, []).append(Edge(self.nodes[edge['source']],self.nodes[edge['target']],edge['label'],edge['post-label'])) 
 
       if sum([len(edges) for edges in self.edges.values()]) != len(graph_input['edges']):
@@ -332,21 +332,21 @@ class Graph:
       subgraph_edges = set()
 
       for link in subgraph:
-      
+
          link[1]= link[1].upper()
          link[2]= link[2].upper()
 
          if "*" in link:
             wildcard_edges.append([e for e in link if "*" not in e])
          else:
-            subgraph_edges.add("%s-%s/%s-%s" % tuple(link))
+            subgraph_edges.add("%s--%s/%s--%s" % tuple(link))
 
       matches = self.edges.keys() & subgraph_edges
 
       if len(matches) != len(subgraph_edges):
          return {}
       elif wildcard_edges:
-         matches = matches.union({edge for edge in self.edges.keys() if len(wildcard_edges) == len([wc for wc in wildcard_edges if wc in re.split("-|/",edge)])})
+         matches = matches.union({edge for edge in self.edges.keys() if len(wildcard_edges) == len([wc for wc in wildcard_edges if wc in re.split("--|/",edge)])})
 
       return {"links" : [edges.as_dict() for key in matches for edges in self.edges[key]]}
 

@@ -256,7 +256,7 @@ class GraphManipulator:
       
       graph_ids = []
 
-      links = [re.split('-|/',link) for link in subgraph_list]
+      links = [re.split('--|/',link) for link in subgraph_list]
  
       for graph_id in self.Graphs:
          edge_list = self.Graphs[graph_id].subgraph_search(links)

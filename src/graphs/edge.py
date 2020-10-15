@@ -46,7 +46,7 @@ class Edge:
       return self.node_source
 
    def get_label(self):
-      return f"{self.node_source.label}-{self.label}-{self.node_target.label}"
+      return f"{self.node_source.label}--{self.label}--{self.node_target.label}"
 
    def as_dict(self,label_as_id=False) -> dict:
       """Function that returns an edge's labels and target & source nodes in dictionary format.
