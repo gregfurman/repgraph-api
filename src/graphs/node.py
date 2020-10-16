@@ -1,6 +1,5 @@
 from errors import *
 
-
 class Node:
    """The Node class holds a node's id, label, a list of incoming and outgoing Edge objects and a list of Token objects with which it is anchored to. 
    
