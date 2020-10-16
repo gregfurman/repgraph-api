@@ -7,7 +7,7 @@ from errors import custom_errors
 
 def create_app(config: dict = None) -> Flask:
    """Application factory method to create and initialise Flask web app"""
-   
+
    app = Flask(__name__)
    cors = CORS(app)
    api=Api(app,errors=custom_errors)
@@ -32,7 +32,7 @@ def create_routes(api:Api):
    api.add_resource(endpoints.GraphsBySubgraph,'/search_subgraph')
    api.add_resource(endpoints.GraphsByNodes,'/node_search')
    api.add_resource(endpoints.GraphsById,'/get_graphs')
-   api.add_resource(endpoints.GraphsBySentence,'/sentence') 
+   api.add_resource(endpoints.GraphsBySentence,'/tokens') 
    api.add_resource(endpoints.GraphsByPage,'/get_graphs/<int:page_no>')
    api.add_resource(endpoints.GraphCount,'/graph_count')
    api.add_resource(endpoints.GraphRD,'/graphs/<string:graph_id>') 

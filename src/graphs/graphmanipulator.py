@@ -308,22 +308,22 @@ class GraphManipulator:
    def is_planar(self,graph):
       return graph.planarity_check()
    
-   def filter_by_sentence(self,sentence:str)->list:
-      """Method to return all graph IDs where the corresponding graph's sentence is a superset of the input 'sentence'.
+   def filter_by_tokens(self,tokens:str)->list:
+      """Method to return all graph IDs where the corresponding graph's sentence contains 'tokens'.
 
-      :param sentence: a string or sub-sentence which is being searched for.
-      :type sentence: str
+      :param tokens: a collection of tokens which is being searched for.
+      :type tokens: str
       :returns: list of graph ids where the sentence matches, even partially, the corresponding graph id's sentence.
       :rtype: list
       """
-      graph_ids =[graph_id for graph_id in self.Graphs.keys() if self.Graphs[graph_id].sentence_search(sentence)]
+      graph_ids =[graph_id for graph_id in self.Graphs.keys() if self.Graphs[graph_id].token_search(tokens)]
 
 
       
       if graph_ids:
          return graph_ids,self.sentences_from_list(graph_ids) 
 
-      raise GraphsNotFound(str(sentence),"a sentence")
+      raise GraphsNotFound(str(tokens),"a sentence")
 
    def __len__(self):
       return len(self.Graphs.keys())

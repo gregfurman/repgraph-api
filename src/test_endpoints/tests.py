@@ -98,14 +98,6 @@ class TestRead(TestAPI):
       response = self.get_graph("This should fail.")
       self.assertEqual(response["status"],400)
 
-   # Get back to this
-   # def test_get_graph_error(self):
-   #    """Testing if an invalid graph ID results in an internal server error. """
-   #    response = self.get_graph("")
-   #    self.assertEqual(response["status"],500)
-
-   # Graph deletion!
-
 class TestNodeNeighbours(TestAPI):
 
    def test_node_neighbour_graph_not_exist(self):
@@ -472,21 +464,21 @@ class TestSentenceSearch(TestAPI):
    def test_single_letter_match(self):
       """Test to successfully match a single letter."""
       self.upload_file()
-      response = self.app.post("sentence",data='{ "sentence" : "t"}',content_type="application/json")
+      response = self.app.post("tokens",data='{ "tokens" : "t"}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))["output"]
       self.assertCountEqual(response_as_dict["graph_ids"],[20003020])
 
    def test_single_letter_no_match(self):
       """Test to fail to match a single letter."""
       self.upload_file()
-      response = self.app.post("sentence",data='{ "sentence" : "x"}',content_type="application/json")
+      response = self.app.post("tokens",data='{ "tokens" : "x"}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
       self.assertEqual(response_as_dict["status"],404)
 
    def test_single_word_match(self):
       """Test to successfully match a single word."""
       self.upload_file()
-      response = self.app.post("sentence",data='{ "sentence" : "concern"}',content_type="application/json")
+      response = self.app.post("tokens",data='{ "tokens" : "concern"}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))["output"]
       self.assertCountEqual(response_as_dict["graph_ids"],[
             20020014,
@@ -499,28 +491,28 @@ class TestSentenceSearch(TestAPI):
    def test_single_word_no_match(self):
       """Test to fail to match a single word."""
       self.upload_file()
-      response = self.app.post("sentence",data='{ "sentence" : "black"}',content_type="application/json")
+      response = self.app.post("tokens",data='{ "tokens" : "black"}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
       self.assertEqual(response_as_dict["status"],404)
 
    def test_single_term_match(self):
       """Test to match a single 2 word term."""
       self.upload_file()
-      response = self.app.post("sentence",data='{ "sentence" : "concern to"}',content_type="application/json")
+      response = self.app.post("tokens",data='{ "tokens" : "concern to"}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))["output"]
       self.assertCountEqual(response_as_dict["graph_ids"],[20020014])
 
    def test_to_match_sentence(self):
       """Test to succesfully match a full sentence."""
       self.upload_file()
-      response = self.app.post("sentence",data='{ "sentence" : "Champagne and dessert followed."}',content_type="application/json")
+      response = self.app.post("tokens",data='{ "tokens" : "Champagne and dessert followed."}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))["output"]
       self.assertCountEqual(response_as_dict["graph_ids"],[20010008])
 
    def test_to_fail_to_match_empty_sentence(self):
-      """Test to fail to match a full sentence."""
+      """Test to fail to match no tokens."""
       self.upload_file()
-      response = self.app.post("sentence",data='{ "sentence" : ""}',content_type="application/json")
+      response = self.app.post("tokens",data='{ "tokens" : ""}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
       self.assertEqual(response_as_dict["status"],404)      
 
@@ -528,7 +520,7 @@ class TestSentenceSearch(TestAPI):
       """Test to fail to match a full sentence."""
       self.upload_file()
       example_string=" ".join([str(x) for x in range(1000)])
-      response = self.app.post("sentence",data= f'{{ "sentence" :  "{example_string}" }}',content_type="application/json")
+      response = self.app.post("tokens",data= f'{{ "tokens" :  "{example_string}" }}',content_type="application/json")
       response_as_dict = json.loads(response.get_data(as_text=True))
       self.assertEqual(response_as_dict["status"],404)
 

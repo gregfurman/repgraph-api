@@ -99,17 +99,17 @@ class GraphsBySentence(Resource):
       
       try:
          result = {}
-         sentence = request.get_json(force=True)["sentence"]
-         output = graphs.filter_by_sentence(sentence)
+         tokens = request.get_json(force=True)["tokens"]
+         output = graphs.filter_by_tokens(tokens)
          result["output"] = {"graph_ids" : output[0], "sentence" : output[1]}
          result["status"] = 200
-         result["search_key"] = sentence
-         result["message"] = f"The graphs matching '{sentence}' have have been found."
+         result["search_key"] = tokens
+         result["message"] = f"The graphs matching '{tokens}' have have been found."
          return result,result["status"] 
       except (errors.GraphsNotFound) as e:
          return {"message" : str(e) ,"status":404},404
-      except:
-         raise errors.InternalServerError
+      # except:
+      #    raise errors.InternalServerError
    
 class GraphComparison(Resource):
    """Flask-RESTful Resource that allows a user to compare 2 graphs for similarities and differences.

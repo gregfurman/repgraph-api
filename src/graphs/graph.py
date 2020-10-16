@@ -416,17 +416,17 @@ class Graph:
       return True
 
 
-   def sentence_search(self,sentence:str)->bool:
+   def token_search(self,tokens:str)->bool:
       """Determines whether a given input string is in a graph's sentence.
 
-      :param sentence: the sub-sentence that is being searched for in a graphs sentence.
-      :type sentence: str
-      :returns: boolean indicating whether a string is in a sentence.
+      :param tokens: tokens that are being searched for in a graphs sentence.
+      :type tokens: str
+      :returns: boolean indicating whether tokens are in a sentence.
       :rtype: bool
       """
       
-      sentence = ' '.join(sentence.split())
-      sub_sentence =   ''.join(x for x in sentence.strip() if x.isalnum() or x==' ').lower().split(" ")
+      tokens = ' '.join(tokens.split())
+      sub_sentence =   ''.join(x for x in tokens.strip() if x.isalnum() or x==' ').lower().split(" ")
       targ_sentence = ''.join(x for x in self.sentence.strip() if x.isalnum() or x==' ').lower().split(" ")
       
       if sub_sentence == [""]:
